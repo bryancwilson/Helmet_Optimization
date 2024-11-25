@@ -14,6 +14,22 @@ theta_s = np.random.uniform(theta_bounds[0], theta_bounds[1], (SIZE_COORD_ARRAY,
 
 cart_x, cart_y = pol2cart_array(r_s, theta_s)
 
+# initialize optimization parameters
+hp = {'num_neighbors': 128,
+      'c1': 1,
+      'c2': 1}
+iterations = 100
+particle_swarm(cart_x, cart_y, iterations, hp)
+
+
+
+
+
+
+
+
+
+
 fig = plt.figure()
 ax = fig.add_subplot()
 ax.scatter(cart_x, cart_y)
