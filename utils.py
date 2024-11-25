@@ -5,6 +5,7 @@ from sklearn.neighbors import NearestNeighbors
 import matplotlib.pyplot as plt
 from matplotlib import patches
 from matplotlib.animation import FuncAnimation, ArtistAnimation
+import math
 
 def pol2cart(r, theta):
     x = r * np.cos(theta)
@@ -54,7 +55,39 @@ def plot(coords, vel):
 
 
     return p_arrow
+
+# sunflower
+def radius(k, n, b):
+    if k>n-b:
+        return 1
+    else:
+        return math.sqrt(k - (1/2))/math.sqrt(n - (b+1)/2)
     
+
+def sun_flower(n, alpha):
+    points = []
+    b = round(alpha*math.sqrt(n))
+    phi = (math.sqrt(5) + 1) / 2
+    for k in range(1, n+1):
+
+        r = radius(k, n, b)
+        theta = (2*math.pi*k)/phi**2
+
+        points.append(pol2cart(r, theta))
+
+    fig, ax = plt.subplots(1)
+    ax.scatter(np.array(points)[:, 0], np.array(points)[:, 1])
+    # plot unit circle
+    unit_circle = patches.Circle((0, 0), radius=1, fill=False)
+    ax.add_patch(unit_circle)
+    plt.show()
+
+def KL(a, num_neighbors):
+    a = np.asarray(a, dtype=np.float32) / sum(a)
+    b = np.ones((1, num_neighbors-1)) / (num_neighbors-1)
+
+    return np.sum(np.where(a != 0, a * np.log(a / b), 0))
+
 # optimization functions
 def particle_swarm(x, y, iterations, hp):
 
@@ -83,23 +116,20 @@ def particle_swarm(x, y, iterations, hp):
     for i in range(len(coords)):
 
         # collect neighbors from point of interest
-        _, nbrs = neigh.kneighbors([[best_local_coord[i][0], best_local_coord[i][1]]])
+        dist, nbrs = neigh.kneighbors([[best_local_coord[i][0], best_local_coord[i][1]]])
 
-        # calculate average distance
-        run_dist = 0
-        for n in nbrs[0][1:]:
-            run_dist += dist([best_local_coord[i][0], best_local_coord[i][1]], [best_local_coord[n][0], best_local_coord[n][1]])
+        # calculate KL Divergence
+        kl_div = KL(dist[0][1:], hp['num_neighbors'])
 
-        best_local_dist[i] = run_dist / len(nbrs[0] - 1)
+        best_local_dist[i] = kl_div
 
     # calculate neighbors
     neigh = _neighbors(list(coords_id.values()), hp['num_neighbors'])
 
     # begin optimization
     for n in range(iterations):
-        # save image
-        axs.append([plot(list(coords_id.values()), vel)])
-        for i in range(len(x)):
+
+        for i in range(0, len(x), 2):
 
             # update quality of local positions =====================================================================================)
             # calculate new velocity for each point
@@ -119,21 +149,20 @@ def particle_swarm(x, y, iterations, hp):
                 coords_id[i][1] += vel[i][1]
 
             # collect neighbors from point of interest
-            _, nbrs = neigh.kneighbors([[coords_id[i][0], coords_id[i][1]]])
+            dist, nbrs = neigh.kneighbors([[coords_id[i][0], coords_id[i][1]]])
 
-            # calculate average distance
-            run_dist = 0
-            for n in nbrs[0][1:]:
-                # calculate distance from point to wall
-                r, _ = cart2pol(coords_id[i][0], coords_id[i][1])
-                dist_from_wall = 1 - r
-                run_dist += (dist([coords_id[i][0], coords_id[i][1]], [coords_id[n][0], coords_id[n][1]]) + dist_from_wall)
+            # Calculate KL Divergence
+            kl_div = KL(dist[0][1:], hp['num_neighbors'])
 
-            run_dist = run_dist / len(nbrs[0] - 1)
+            # # calculate distance from point to wall
+            # r, _ = cart2pol(coords_id[i][0], coords_id[i][1])
+            # dist_from_wall = 1 - r
+            # run_dist += dist_from_wall
+            # run_dist = run_dist / len(nbrs[0] - 1)
 
             # update best local coordinate position
-            if best_local_dist[i] < run_dist:
-                best_local_dist[i] = run_dist
+            if best_local_dist[i] > kl_div:
+                best_local_dist[i] = kl_div
                 best_local_coord[i] = [coords_id[i][0], coords_id[i][1]]
             
             # update global position =================================================================================================
@@ -156,8 +185,7 @@ def particle_swarm(x, y, iterations, hp):
     # unit_circle = patches.Circle((0, 0), radius=1, fill=False)
     # ax.add_patch(unit_circle)
 
-    # plt.show()
-
+    plt.show()
 
 
 

@@ -5,6 +5,9 @@ from utils import *
 
 SIZE_COORD_ARRAY = 128
 
+# sun_flower(128, 1)
+
+
 # generate random seed of polar coordinates
 r_bounds = [0, .90]
 theta_bounds = [0, 360]
@@ -15,19 +18,11 @@ theta_s = np.random.uniform(theta_bounds[0], theta_bounds[1], (SIZE_COORD_ARRAY,
 cart_x, cart_y = pol2cart_array(r_s, theta_s)
 
 # initialize optimization parameters
-hp = {'num_neighbors': 128,
+hp = {'num_neighbors': 3,
       'c1': 1,
       'c2': 1}
-iterations = 100
+iterations = 300
 particle_swarm(cart_x, cart_y, iterations, hp)
-
-
-
-
-
-
-
-
 
 
 fig = plt.figure()
@@ -70,4 +65,3 @@ for r, t in zip(r_s, theta_s):
 
 
 # calculate distance between points
-
