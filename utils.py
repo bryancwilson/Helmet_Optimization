@@ -28,6 +28,18 @@ def pol2cart_array(r_s, theta_s):
     
     return cart_x, cart_y
 
+# generate cartesian points
+def point_generation(size):
+    # generate random seed of polar coordinates
+    r_bounds = [0, .90]
+    theta_bounds = [0, 360]
+
+    r_s = np.random.uniform(r_bounds[0], r_bounds[1], (size, ))
+    theta_s = np.random.uniform(theta_bounds[0], theta_bounds[1], (size, ))
+
+    cart_x, cart_y = pol2cart_array(r_s, theta_s)
+    return cart_x, cart_y
+
 # metric functions
 def inter_distance(coords):
     coord_pairs = combinations(coords, 2)
@@ -64,7 +76,7 @@ def radius(k, n, b):
         return math.sqrt(k - (1/2))/math.sqrt(n - (b+1)/2)
     
 
-def sun_flower(n, alpha):
+def sun_flower(n, alpha, ellipse=False):
     points = []
     b = round(alpha*math.sqrt(n))
     phi = (math.sqrt(5) + 1) / 2
@@ -76,6 +88,13 @@ def sun_flower(n, alpha):
         points.append(pol2cart(r, theta))
 
     fig, ax = plt.subplots(1)
+    # plot ellipses
+    if ellipse:
+        for p in points:
+            theta = int(round(np.random.uniform(0, 360)))
+            ell = patches.Ellipse(xy=tuple(p), width=.1, height=.05, angle=theta, facecolor='blue', alpha=0.2)
+            ax.add_patch(ell)
+
     ax.scatter(np.array(points)[:, 0], np.array(points)[:, 1])
     # plot unit circle
     unit_circle = patches.Circle((0, 0), radius=1, fill=False)
@@ -87,6 +106,93 @@ def KL(a, num_neighbors):
     b = np.ones((1, num_neighbors-1)) / (num_neighbors-1)
 
     return np.sum(np.where(a != 0, a * np.log(a / b), 0))
+
+def crossover(point_pairs, population):
+
+    coords = []
+    ar1 = population[point_pairs[0]]
+    ar2 = population[point_pairs[1]]
+    for p1, p2 in zip(ar1, ar2):
+        x = np.random.uniform(p1[0], p2[0])
+        y = np.random.uniform(p1[1], p2[1])
+
+        coords.append([x, y])
+
+    return np.array(coords)
+
+def evolutionary_algorithm(iterations, hp):
+
+    cart_x, cart_y = point_generation(128*hp['pop_multiplier'])
+
+    # generate initial population
+    population = []
+    for i in range(hp['pop_multiplier']):
+        population.append(np.transpose(np.vstack((cart_x[i*128:(i+1)*128], cart_y[i*128:(i+1)*128]))))
+
+    inital_pop = population
+
+    # optimize
+    for _ in range(iterations):
+
+        # apply objective function on population
+        distr = {}
+        for i, p in enumerate(population):
+            neigh = _neighbors(p, hp['num_neighbors'])
+
+            kls = []
+            for point in p:
+                # collect neighbors from point of interest
+                dist, nbrs = neigh.kneighbors(np.reshape(point, (1, 2)))
+
+                # Calculate KL Divergences
+                kl_div = KL(dist[0][1:], hp['num_neighbors'])
+                kls.append(kl_div)
+
+            # # calculate distance from point to wall
+            # r, _ = cart2pol(coords_id[i][0], coords_id[i][1])
+            # dist_from_wall = 1 - r
+            # run_dist += dist_from_wall
+            # run_dist = run_dist / len(nbrs[0] - 1)
+
+            distr[i] = np.mean(kls)
+
+        # select k best candidates
+        sorted_dict = dict(sorted(distr.items(), key=lambda item: item[1]))
+        best_candidates = list(sorted_dict.keys())[:hp['k']]
+
+        # perform crossovers
+        pairs = combinations(best_candidates, r=2)
+
+        # generate children
+        children = []
+        for pa in pairs:
+            children.append(crossover(pa, population))
+
+        np.random.shuffle(children)
+        population = children[:10]
+
+        print('Best KL Score', list(sorted_dict.values())[0])
+
+    fig, ax = plt.subplots(1, 2)
+
+    cs1 = inital_pop[0]
+    ax[0].scatter(cs1[:, 0], cs1[:, 1])
+
+    cs2 = population[0]
+    ax[1].scatter(cs2[:, 0], cs2[:, 1])
+
+    # # plot unit circle
+    # unit_circle = patches.Circle((0, 0), radius=1, fill=False)
+    # ax.add_patch(unit_circle)
+
+    plt.show()
+
+
+
+        
+    
+
+
 
 # optimization functions
 def particle_swarm(x, y, iterations, hp):
@@ -147,6 +253,9 @@ def particle_swarm(x, y, iterations, hp):
             else:
                 coords_id[i][0] += vel[i][0]
                 coords_id[i][1] += vel[i][1]
+
+            # calculate neighbors
+            neigh = _neighbors(coords, hp['num_neighbors'])
 
             # collect neighbors from point of interest
             dist, nbrs = neigh.kneighbors([[coords_id[i][0], coords_id[i][1]]])
