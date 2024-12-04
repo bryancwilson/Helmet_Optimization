@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 from matplotlib import patches
 from matplotlib.animation import FuncAnimation, ArtistAnimation
 import math
+from scipy.spatial import Voronoi, voronoi_plot_2d
 
 def pol2cart(r, theta):
     x = r * np.cos(theta)
@@ -31,7 +32,7 @@ def pol2cart_array(r_s, theta_s):
 # generate cartesian points
 def point_generation(size):
     # generate random seed of polar coordinates
-    r_bounds = [0, .90]
+    r_bounds = [0, 1]
     theta_bounds = [0, 360]
 
     r_s = np.random.uniform(r_bounds[0], r_bounds[1], (size, ))
@@ -113,8 +114,16 @@ def crossover(point_pairs, population):
     ar1 = population[point_pairs[0]]
     ar2 = population[point_pairs[1]]
     for p1, p2 in zip(ar1, ar2):
-        x = np.random.uniform(p1[0], p2[0])
-        y = np.random.uniform(p1[1], p2[1])
+        spin_wheel = np.random.rand()
+        if spin_wheel > .9:
+            x = p1[0]
+            y = p1[1]
+        elif spin_wheel < .1:
+            x = p2[0]
+            y = p2[1]
+        else:
+            x = np.random.uniform(p1[0], p2[0])
+            y = np.random.uniform(p1[1], p2[1])
 
         coords.append([x, y])
 
@@ -132,7 +141,7 @@ def evolutionary_algorithm(iterations, hp):
     inital_pop = population
 
     # optimize
-    for _ in range(iterations):
+    for e in range(iterations):
 
         # apply objective function on population
         distr = {}
@@ -141,11 +150,13 @@ def evolutionary_algorithm(iterations, hp):
 
             kls = []
             for point in p:
+
                 # collect neighbors from point of interest
                 dist, nbrs = neigh.kneighbors(np.reshape(point, (1, 2)))
 
                 # Calculate KL Divergences
-                kl_div = KL(dist[0][1:], hp['num_neighbors'])
+                kl_div = KL(dist[0][1:], hp['num_neighbors']) - np.mean(dist[0][1:])
+
                 kls.append(kl_div)
 
             # # calculate distance from point to wall
@@ -171,7 +182,7 @@ def evolutionary_algorithm(iterations, hp):
         np.random.shuffle(children)
         population = children[:10]
 
-        print('Best KL Score', list(sorted_dict.values())[0])
+        print('EPOCH: ', e, 'Best KL Score', list(sorted_dict.values())[0])
 
     fig, ax = plt.subplots(1, 2)
 
@@ -187,15 +198,11 @@ def evolutionary_algorithm(iterations, hp):
 
     plt.show()
 
-
-
-        
-    
-
-
-
 # optimization functions
-def particle_swarm(x, y, iterations, hp):
+def particle_swarm(iterations, hp):
+
+    # generate points
+    x, y = point_generation(128)
 
     # initialize dict with ids to positions and velocities
     axs = []
@@ -205,10 +212,11 @@ def particle_swarm(x, y, iterations, hp):
     coords = []
     vel = {}
     for i in range(len(x)):
-        coords_id[i] = [x[i][0], y[i][0]]
+        coords_id[i] = [x[i], y[i]]
         vel[i] = [np.random.uniform(-.1, .1), np.random.uniform(-.1, .1)]
-        coords.append([x[i][0], y[i][0]])
+        coords.append([x[i], y[i]])
 
+    initial_coords = np.array(list(coords_id.values()))
     np.random.shuffle(coords)
 
     for i, c in enumerate(coords):
@@ -227,15 +235,27 @@ def particle_swarm(x, y, iterations, hp):
         # calculate KL Divergence
         kl_div = KL(dist[0][1:], hp['num_neighbors'])
 
-        best_local_dist[i] = kl_div
+        # calculate distance from point to wall
+        r, _ = cart2pol(coords_id[i][0], coords_id[i][1])
+        dist_from_wall = 1 - r
+
+        # overal metric
+        metric = kl_div - 2*dist_from_wall
+
+        best_local_dist[i] = metric
 
     # calculate neighbors
     neigh = _neighbors(list(coords_id.values()), hp['num_neighbors'])
 
     # begin optimization
+    dfw_ = []
+    kls_ = []
+    met_ = []
     for n in range(iterations):
 
-        for i in range(0, len(x), 2):
+        dists_from_wall = []
+        kls = []
+        for i in range(0, len(x)):
 
             # update quality of local positions =====================================================================================)
             # calculate new velocity for each point
@@ -262,16 +282,19 @@ def particle_swarm(x, y, iterations, hp):
 
             # Calculate KL Divergence
             kl_div = KL(dist[0][1:], hp['num_neighbors'])
+            kls.append(kl_div)
 
             # # calculate distance from point to wall
-            # r, _ = cart2pol(coords_id[i][0], coords_id[i][1])
-            # dist_from_wall = 1 - r
-            # run_dist += dist_from_wall
-            # run_dist = run_dist / len(nbrs[0] - 1)
+            r, _ = cart2pol(coords_id[i][0], coords_id[i][1])
+            dist_from_wall = 1 - r
+
+            dists_from_wall.append(dist_from_wall)
+            # overal metric
+            metric = kl_div - 2*dist_from_wall
 
             # update best local coordinate position
-            if best_local_dist[i] > kl_div:
-                best_local_dist[i] = kl_div
+            if best_local_dist[i] > metric:
+                best_local_dist[i] = metric
                 best_local_coord[i] = [coords_id[i][0], coords_id[i][1]]
             
             # update global position =================================================================================================
@@ -279,16 +302,33 @@ def particle_swarm(x, y, iterations, hp):
 
             best_global_coord = coords_id[id]
 
-        print("Average Distance", np.mean(list(best_local_dist.values())))
+        print("EPOCH: ", n, "Average Metric", np.mean(list(best_local_dist.values())), "KL: ", np.mean(kls), "FW: ", np.mean(dists_from_wall))
+        
+        dfw_.append(np.mean(dists_from_wall))
+        kls_.append(np.mean(kls))
+        met_.append(np.mean(list(best_local_dist.values())))
 
     # fig = plt.figure()
     # ani = ArtistAnimation(fig, axs, interval=10, blit=True)
     # ani.save("animation.mp4", fps=3)
 
-    fig = plt.figure()
-    ax = fig.add_subplot()
-    cs = np.array(list(coords_id.values()))
-    ax.scatter(cs[:, 0], cs[:, 1])
+    fig, ax = plt.subplots(1, 3)
+
+    cs1 = initial_coords
+    ax[0].scatter(cs1[:, 0], cs1[:, 1])
+    ax[0].set_xlim(-1, 1)
+    ax[0].set_ylim(-1, 1)
+
+    cs2 = np.array(list(coords_id.values()))
+    ax[1].scatter(cs2[:, 0], cs2[:, 1])
+    ax[1].set_xlim(-1, 1)
+    ax[1].set_ylim(-1, 1)
+
+    x = np.linspace(1, iterations, iterations)
+    ax[2].plot(x, met_, label='Metric')
+    ax[2].plot(x, kls_, label='KL')
+    ax[2].plot(x, dfw_, label='DFW')
+    ax[2].legend()
 
     # # plot unit circle
     # unit_circle = patches.Circle((0, 0), radius=1, fill=False)
@@ -297,6 +337,89 @@ def particle_swarm(x, y, iterations, hp):
     plt.show()
 
 
+
+def lloyds_rel(iterations):
+
+    # generate points
+    x, y = point_generation(128)
+
+    coords = []
+    for i in range(len(x)):
+        coords.append([x[i], y[i]])
+
+    initial_points = np.array(coords)
+    points = np.array(coords)
+
+    min_x, max_x = [-1, 1]
+    min_y, max_y = [-1, 1]
+
+    center = [0,0]
+    radius = 1
+    movements = []
+    for e in range(iterations):
+
+        # Compute Voronoi diagram
+        vor = Voronoi(points)
+
+        # Plot the Voronoi diagram using scipy's built-in function
+        # voronoi_plot_2d(vor, show_vertices=False)  # hide vertices for cleaner visualization
+        
+        # plt.show()
+
+        new_points = []
+        
+        # For each point, find the centroid of its Voronoi cell
+        for i in range(len(points)):
+            # Get the vertices of the Voronoi cell
+            region = vor.regions[vor.point_region[i]]
+            
+            if -1 in region:  # Ignore infinite regions
+                new_points.append(points[i])
+                
+            else:
+                # Extract the polygon that represents the Voronoi cell
+                vertices = np.array([vor.vertices[i] for i in region])
+                
+                # Calculate the centroid of the Voronoi cell
+                centroid = np.mean(vertices, axis=0)
+                
+                # Clip centroid to make sure it's inside the region
+                # Clip centroid to make sure it's inside the circle
+                dist = np.linalg.norm(centroid - center)
+                if dist > radius:
+                    # Project the centroid back onto the circle boundary
+                    centroid = center + (centroid - center) * radius / dist
+
+                new_points.append(centroid)
+        
+        new_points = np.array(new_points)
+        # Update points to the new centroids
+        average_mov =  np.mean(np.linalg.norm(new_points - points, axis=1))
+        movements.append(average_mov)
+        print("EPOCH: ", e, "Average Displacement: ", average_mov)
+
+        points = np.array(new_points)
+
+
+    fig, ax = plt.subplots(1, 3)
+    unit_circle1 = patches.Circle((0, 0), radius=1, fill=False)
+    unit_circle2 = patches.Circle((0, 0), radius=1, fill=False)
+
+    cs1 = initial_points
+    ax[0].scatter(cs1[:, 0], cs1[:, 1])
+    ax[0].add_patch(unit_circle1)
+    ax[0].set_xlim(-1, 1)
+    ax[0].set_ylim(-1, 1)
+
+    cs2 = points
+    ax[1].scatter(cs2[:, 0], cs2[:, 1])
+    ax[1].add_patch(unit_circle2)
+    ax[1].set_xlim(-1, 1)
+    ax[1].set_ylim(-1, 1)
+
+    ax[2].plot(np.linspace(1, iterations, iterations), movements)
+
+    plt.show()
 
 
 

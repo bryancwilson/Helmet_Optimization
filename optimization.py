@@ -6,23 +6,25 @@ from utils import *
 
 
 SIZE_COORD_ARRAY = 128
-POP_SIZE = 10
+POP_SIZE = 20
+
+lloyds_rel(100)
 
 # initialize optimization parameters
-hp = {'num_neighbors': 5,
-      'pop_multiplier': 10,
-      'k': 5}
+# hp = {'num_neighbors': 10,
+#       'pop_multiplier': 10,
+#       'k': 5}
 
-evolutionary_algorithm(100, hp)
+# evolutionary_algorithm(20, hp)
 
-# # initialize optimization parameters
+# initialize optimization parameters
 # hp = {'num_neighbors': 3,
 #       'c1': 1,
 #       'c2': 1}
 
-# iterations = 300
-# particle_swarm(cart_x, cart_y, iterations, hp)
+# iterations = 100
+# particle_swarm(iterations, hp)
 
 
 # generate sunflower
-sun_flower(128, 1)
+# sun_flower(128, 1)
