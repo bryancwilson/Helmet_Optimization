@@ -7,6 +7,9 @@ from matplotlib import patches
 from matplotlib.animation import FuncAnimation, ArtistAnimation
 import math
 from scipy.spatial import Voronoi, voronoi_plot_2d
+from shapely.geometry import Polygon, Point
+from shapely.ops import nearest_points
+
 
 def pol2cart(r, theta):
     x = r * np.cos(theta)
@@ -30,16 +33,66 @@ def pol2cart_array(r_s, theta_s):
     return cart_x, cart_y
 
 # generate cartesian points
-def point_generation(size, r_max, theta_max):
+def point_generation(size, shape, parameters, plot=False):
     # generate random seed of polar coordinates
-    r_bounds = [0, r_max]
-    theta_bounds = [0, theta_max]
 
-    r_s = np.random.uniform(r_bounds[0], r_bounds[1], (size, ))
-    theta_s = np.random.uniform(theta_bounds[0], theta_bounds[1], (size, ))
+    if shape == 'arbitrary':
+        fig, ax = plt.subplots()
 
-    cart_x, cart_y = pol2cart_array(r_s, theta_s)
-    return cart_x, cart_y
+        # vertices
+        x_v = parameters['x']
+        y_v = parameters['y']
+
+        vertices = []
+        for x_, y_ in zip(x_v, y_v):
+            vertices.append((x_, y_))
+
+        # generate polygon
+        pg = Polygon(vertices)
+
+        # generate point in polygon
+        minx, miny, maxx, maxy = pg.bounds
+        cart_x = []
+        cart_y = []
+        while len(cart_x) < size:
+            x = np.random.uniform(minx, maxx)
+            y = np.random.uniform(miny, maxy)
+            point = Point(x, y)
+            if pg.contains(point):
+                cart_x.append(x)
+                cart_y.append(y)
+
+
+        if plot:
+            polygon = patches.Polygon(list(zip(x_v, y_v)), closed=True, alpha=.1)
+
+            ax.add_patch(polygon)
+            ax.scatter(np.array(cart_x), np.array(cart_y), marker='o', color='red', alpha=0.5)
+            ax.set_xlim([np.min(x_v), np.max(x_v)])
+            ax.set_ylim([np.min(y_v), np.max(y_v)])
+
+
+        plt.show()
+
+    elif shape == 'circle':
+        r_bounds = [parameters['r_min'], parameters['r_max']]
+        theta_bounds = [parameters['theta_min'], parameters['theta_max']]
+
+        r_s = np.random.uniform(r_bounds[0], r_bounds[1], (size, ))
+        theta_s = np.random.uniform(theta_bounds[0], theta_bounds[1], (size, ))
+
+        cart_x, cart_y = pol2cart_array(r_s, theta_s)
+
+        if plot:
+            fig, ax = plt.subplots(figsize=(8, 6))
+            unit_circle = patches.Circle((0, 0), radius=1, fill=False)
+            ax.add_patch(unit_circle)
+            ax.scatter(np.array(cart_x), np.array(cart_y), marker='o', color='red', alpha=0.5)
+            plt.show()
+
+        pg = None
+
+    return cart_x, cart_y, pg
 
 # metric functions
 def inter_distance(coords):
@@ -59,15 +112,46 @@ def _neighbors(points_list, k):
     return neigh
 
 # create base plot
-def plot(coords, vel):
-    fig, ax = plt.subplots(figsize=(8, 6))
-    unit_circle = patches.Circle((0, 0), radius=1, fill=False)
-    ax.add_patch(unit_circle)
-    p_plot = ax.scatter(np.array(coords)[:, 0], np.array(coords)[:, 1], marker='o', color='red', alpha=0.5)
-    p_arrow = ax.quiver(np.array(coords)[:, 0], np.array(coords)[:, 1], np.array(list(vel.values()))[:, 0], np.array(list(vel.values()))[:, 1], color='blue', width=0.005, angles='xy', scale_units='xy', scale=1)
+def plot(initial_points, final_points, iterations, movements, shape, parameters):
 
+    fig, ax = plt.subplots(1, 3)
 
-    return p_arrow
+    if shape=='circle':
+        shape_1 = patches.Circle((0, 0), radius=1, fill=False)
+        shape_2 = patches.Circle((0, 0), radius=1, fill=False)
+    elif shape=='arbitrary':
+        x_v = parameters['x']
+        y_v = parameters['y']
+        shape_1 = patches.Polygon(list(zip(x_v, y_v)), closed=True, alpha=.1)
+        shape_2 = patches.Polygon(list(zip(x_v, y_v)), closed=True, alpha=.1)
+
+    cs1 = initial_points
+    ax[0].scatter(cs1[:, 0], cs1[:, 1])
+    ax[0].add_patch(shape_1)
+    ax[0].set_xlim(-3, 3)
+    ax[0].set_ylim(-3, 3)
+    ax[0].set_title('Initial Point Positions')
+    ax[0].set_xlabel('X')
+    ax[0].set_ylabel('Y')
+
+    cs2 = final_points
+    ax[1].scatter(cs2[:, 0], cs2[:, 1])
+    ax[1].add_patch(shape_2)
+    ax[1].set_xlim(-3, 3)
+    ax[1].set_ylim(-3, 3)
+    ax[1].set_title('Final Point Positions')
+    ax[1].set_xlabel('X')
+    ax[1].set_ylabel('Y')
+
+    ax[2].plot(np.linspace(1, iterations, iterations), movements)
+    ax[2].set_title('Average Displacement Over Iterations')
+    ax[2].set_xlabel('Iterations')
+    ax[2].set_ylabel('Avg Displacement')
+
+    plt.show()
+  
+
+    
 
 # sunflower
 def radius(k, n, b):
@@ -338,11 +422,15 @@ def particle_swarm(iterations, hp):
 
 
 
-def lloyds_rel(iterations):
+def lloyds_rel(iterations, shape, parameters):
 
     # generate points
-    x, y = point_generation(128, .9, 360)
 
+    x, y, pg = point_generation(128,
+                    shape,
+                    parameters,
+                    True)
+    
     coords = []
     for i in range(len(x)):
         coords.append([x[i], y[i]])
@@ -383,16 +471,26 @@ def lloyds_rel(iterations):
                 # Calculate the centroid of the Voronoi cell
                 centroid = np.mean(vertices, axis=0)
                 
-                # Clip centroid to make sure it's inside the region
-                # Clip centroid to make sure it's inside the circle
-                dist = np.linalg.norm(centroid - center)
-                if dist > radius:
-                    # Project the centroid back onto the circle boundary
-                    centroid = center + (centroid - center) * radius / dist
+                if shape=='circle':
+                    # Clip centroid to make sure it's inside the region
+                    dist = np.linalg.norm(centroid - center)
+                    if dist > radius:
+                        # Project the centroid back onto the circle boundary
+                        centroid = center + (centroid - center) * radius / dist
 
-                new_points.append(centroid)
+                elif shape=='arbitrary':
+
+                    point = Point(centroid[0], centroid[1])
+                    if not pg.contains(point):
+                        centroid = nearest_points(pg, point)[0]
+
+                        centroid = [centroid.x, centroid.y]
+
+
+
+                new_points.append(list(centroid))
         
-        new_points = np.array(new_points)
+        new_points = np.array(new_points, dtype=np.float64)
         # Update points to the new centroids
         average_mov =  np.mean(np.linalg.norm(new_points - points, axis=1))
         movements.append(average_mov)
@@ -400,35 +498,13 @@ def lloyds_rel(iterations):
 
         points = np.array(new_points)
 
+    plot(initial_points=initial_points,
+        final_points=new_points, 
+        iterations=iterations, 
+        movements=movements, 
+        shape=shape, 
+        parameters=parameters)
 
-    fig, ax = plt.subplots(1, 3)
-    unit_circle1 = patches.Circle((0, 0), radius=1, fill=False)
-    unit_circle2 = patches.Circle((0, 0), radius=1, fill=False)
-
-    cs1 = initial_points
-    ax[0].scatter(cs1[:, 0], cs1[:, 1])
-    ax[0].add_patch(unit_circle1)
-    ax[0].set_xlim(-1, 1)
-    ax[0].set_ylim(-1, 1)
-    ax[0].set_title('Initial Point Positions')
-    ax[0].set_xlabel('X')
-    ax[0].set_ylabel('Y')
-
-    cs2 = points
-    ax[1].scatter(cs2[:, 0], cs2[:, 1])
-    ax[1].add_patch(unit_circle2)
-    ax[1].set_xlim(-1, 1)
-    ax[1].set_ylim(-1, 1)
-    ax[1].set_title('Final Point Positions')
-    ax[1].set_xlabel('X')
-    ax[1].set_ylabel('Y')
-
-    ax[2].plot(np.linspace(1, iterations, iterations), movements)
-    ax[2].set_title('Average Displacement Over Iterations')
-    ax[2].set_xlabel('Iterations')
-    ax[2].set_ylabel('Avg Displacement')
-
-    plt.show()
 
 
 
