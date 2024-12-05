@@ -32,6 +32,25 @@ def pol2cart_array(r_s, theta_s):
     
     return cart_x, cart_y
 
+# generate random polygon
+def generate_random_polygon(num_points, min_x, max_x, min_y, max_y):
+    """Generates a random polygon with the given number of points."""
+
+    points = []
+    for _ in range(num_points):
+        x = np.random.uniform(min_x, max_x)
+        y = np.random.uniform(min_y, max_y)
+        points.append(np.array((x, y)))
+
+    points = np.array(points)
+    # Ensure the polygon is valid by checking for self-intersection
+    while True:
+        polygon = Polygon(points)
+        if polygon.is_valid:
+            return points[:, 0], points[:, 1]
+        else:
+            np.random.shuffle(points)
+
 # generate cartesian points
 def point_generation(size, shape, parameters, plot=False):
     # generate random seed of polar coordinates
@@ -438,12 +457,10 @@ def lloyds_rel(iterations, shape, parameters):
     initial_points = np.array(coords)
     points = np.array(coords)
 
-    min_x, max_x = [-1, 1]
-    min_y, max_y = [-1, 1]
-
     center = [0,0]
     radius = .9
     movements = []
+
     for e in range(iterations):
 
         # Compute Voronoi diagram
