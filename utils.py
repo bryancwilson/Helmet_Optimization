@@ -51,6 +51,7 @@ def generate_random_polygon(num_points, min_x, max_x, min_y, max_y):
         else:
             np.random.shuffle(points)
 
+
 # generate cartesian points
 def point_generation(size, shape, parameters, plot=False):
     # generate random seed of polar coordinates
@@ -90,8 +91,7 @@ def point_generation(size, shape, parameters, plot=False):
             ax.set_xlim([np.min(x_v), np.max(x_v)])
             ax.set_ylim([np.min(y_v), np.max(y_v)])
 
-
-        plt.show()
+            plt.show()
 
     elif shape == 'circle':
         r_bounds = [parameters['r_min'], parameters['r_max']]
@@ -107,6 +107,7 @@ def point_generation(size, shape, parameters, plot=False):
             unit_circle = patches.Circle((0, 0), radius=1, fill=False)
             ax.add_patch(unit_circle)
             ax.scatter(np.array(cart_x), np.array(cart_y), marker='o', color='red', alpha=0.5)
+            
             plt.show()
 
         pg = None
@@ -522,6 +523,86 @@ def lloyds_rel(iterations, shape, parameters):
         shape=shape, 
         parameters=parameters)
 
+def lloyds_rel_3D(iterations, shape, parameters):
+
+    # generate points
+
+    x, y, pg = point_generation(128,
+                    shape,
+                    parameters,
+                    True)
+    
+    coords = []
+    for i in range(len(x)):
+        coords.append([x[i], y[i]])
+
+    initial_points = np.array(coords)
+    points = np.array(coords)
+
+    center = [0,0]
+    radius = .9
+    movements = []
+
+    for e in range(iterations):
+
+        # Compute Voronoi diagram
+        vor = Voronoi(points)
+
+        # Plot the Voronoi diagram using scipy's built-in function
+        # voronoi_plot_2d(vor, show_vertices=False)  # hide vertices for cleaner visualization
+        
+        # plt.show()
+
+        new_points = []
+        
+        # For each point, find the centroid of its Voronoi cell
+        for i in range(len(points)):
+            # Get the vertices of the Voronoi cell
+            region = vor.regions[vor.point_region[i]]
+            
+            if -1 in region:  # Ignore infinite regions
+                new_points.append(points[i])
+                
+            else:
+                # Extract the polygon that represents the Voronoi cell
+                vertices = np.array([vor.vertices[i] for i in region])
+                
+                # Calculate the centroid of the Voronoi cell
+                centroid = np.mean(vertices, axis=0)
+                
+                if shape=='circle':
+                    # Clip centroid to make sure it's inside the region
+                    dist = np.linalg.norm(centroid - center)
+                    if dist > radius:
+                        # Project the centroid back onto the circle boundary
+                        centroid = center + (centroid - center) * radius / dist
+
+                elif shape=='arbitrary':
+
+                    point = Point(centroid[0], centroid[1])
+                    if not pg.contains(point):
+                        centroid = nearest_points(pg, point)[0]
+
+                        centroid = [centroid.x, centroid.y]
+
+
+
+                new_points.append(list(centroid))
+        
+        new_points = np.array(new_points, dtype=np.float64)
+        # Update points to the new centroids
+        average_mov =  np.mean(np.linalg.norm(new_points - points, axis=1))
+        movements.append(average_mov)
+        print("EPOCH: ", e, "Average Displacement: ", average_mov)
+
+        points = np.array(new_points)
+
+    plot(initial_points=initial_points,
+        final_points=new_points, 
+        iterations=iterations, 
+        movements=movements, 
+        shape=shape, 
+        parameters=parameters)
 
 
 
