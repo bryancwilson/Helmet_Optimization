@@ -35,5 +35,5 @@ parameters = {'r_min': 0,
               'phi_min': 0,
               'phi_max': 360}
 
-lloyds_rel_3D(100, 'arbitrary', parameters)
+lloyds_rel_3D(100, 'sphere', parameters)
 

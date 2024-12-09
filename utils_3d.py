@@ -22,8 +22,8 @@ def pol2cart_3d(r, theta, phi):
 
 def cart2pol_3d(x, y, z):
     rho = np.sqrt(x**2 + y**2 + z**2)
-    theta = np.arctan2(np.sqrt(x**2 + y**2), z)
-    phi = np.arctan2(y, x)
+    theta = np.arctan(y, x)
+    phi = np.arctan2(z, rho)
 
     return rho, theta, phi
 
@@ -39,6 +39,9 @@ def pol2cart_array_3d(r_s, theta_s, phi_s):
         cart_z.append(z)
     
     return cart_x, cart_y, cart_z
+
+def cart2pol_array_3d():
+    pass
 
 # generate random polygon
 def generate_random_polygon_3d(num_points, min_x, max_x, min_y, max_y):
@@ -157,6 +160,33 @@ def point_generation_3D(size, shape, parameters, plot=False):
     return cart_x, cart_y, cart_z, pg
 
 # create base plot
+def polt_3d_final(final_points):
+    fig = plt.figure()
+    ax2 = fig.add_subplot(projection='3d')
+
+    # plot sphere
+    u, v = np.mgrid[0:2*np.pi:20j, 0:np.pi:10j]
+    x = np.cos(u)*np.sin(v)
+    y = np.sin(u)*np.sin(v)
+    z = np.cos(v)
+    
+    # plot vectors
+    cs2 = final_points
+    direct = []
+    for c_ in cs2:
+        rho, theta, phi = cart2pol_3d(c_[0], c_[1], c_[2])
+        direct.append(pol2cart_3d(1 - rho, theta, phi))
+
+    direct = np.array(direct)
+
+    ax2.scatter(cs2[:, 0], cs2[:, 1], cs2[:, 2])
+    ax2.quiver(cs2[:, 0], cs2[:, 1], cs2[:, 2],
+               direct[:, 0], direct[:, 1], direct[:, 2])
+    
+    ax2.plot_wireframe(x, y, z, color="k")
+    
+    plt.show()
+
 def plot_3d(initial_points, final_points, iterations, movements, shape, parameters):
 
     fig = plt.figure()
@@ -187,7 +217,17 @@ def plot_3d(initial_points, final_points, iterations, movements, shape, paramete
     ax1.set_ylabel('Y')
 
     cs2 = final_points
+    direct = []
+    for c_ in cs2:
+        rho, theta, phi = cart2pol_3d(c_[0], c_[1], c_[2])
+        direct.append(pol2cart_3d(1 - rho, theta, phi))
+
+    direct = np.array(direct)
+
     ax2.scatter(cs2[:, 0], cs2[:, 1], cs2[:, 2])
+    ax2.quiver(cs2[:, 0], cs2[:, 1], cs2[:, 2],
+               direct[:, 0], direct[:, 1], direct[:, 2])
+    
     ax2.plot_wireframe(x, y, z, color="b")
     ax2.set_xlim(-1, 1)
     ax2.set_ylim(-1, 1)
@@ -275,6 +315,8 @@ def lloyds_rel_3D(iterations, shape, parameters):
         print("EPOCH: ", e, "Average Displacement: ", average_mov)
 
         points = np.array(new_points)
+
+    polt_3d_final(final_points=new_points)
 
     plot_3d(initial_points=initial_points,
         final_points=new_points, 
