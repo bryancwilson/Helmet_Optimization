@@ -31,9 +31,10 @@ POP_SIZE = 20
 parameters = {'r_min': 0,
               'r_max': .9,
               'theta_min': 0,
-              'theta_max': 360,
-              'phi_min': 0,
-              'phi_max': 360}
+              'theta_max': 2*np.pi,
+              'phi_min': -1*(np.pi) / 2,
+              'phi_max': np.pi / 2}
 
-lloyds_rel_3D(100, 'sphere', parameters)
+# lloyds_rel(128, 'semi_circle', parameters)
+lloyds_rel_3D(128, 'semi_sphere', parameters)
 

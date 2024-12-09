@@ -93,7 +93,7 @@ def point_generation(size, shape, parameters, plot=False):
 
             plt.show()
 
-    elif shape == 'circle':
+    elif shape == 'circle' or shape == 'semi_circle':
         r_bounds = [parameters['r_min'], parameters['r_max']]
         theta_bounds = [parameters['theta_min'], parameters['theta_max']]
 
@@ -132,11 +132,11 @@ def _neighbors(points_list, k):
     return neigh
 
 # create base plot
-def plot(initial_points, final_points, iterations, movements, shape, parameters):
+def plot_final(final_points, shape, parameters, ellipse=False, vectors=False):
 
-    fig, ax = plt.subplots(1, 3)
+    fig, ax = plt.subplots()
 
-    if shape=='circle':
+    if shape=='circle' or shape=='semi_circle':
         shape_1 = patches.Circle((0, 0), radius=1, fill=False)
         shape_2 = patches.Circle((0, 0), radius=1, fill=False)
     elif shape=='arbitrary':
@@ -144,6 +144,80 @@ def plot(initial_points, final_points, iterations, movements, shape, parameters)
         y_v = parameters['y']
         shape_1 = patches.Polygon(list(zip(x_v, y_v)), closed=True, alpha=.1)
         shape_2 = patches.Polygon(list(zip(x_v, y_v)), closed=True, alpha=.1)
+
+    assert not (ellipse == True and vectors == True), "parameters 'ellipse' and 'vectors' should not both be True"
+
+    if ellipse:
+        for p in final_points:
+            theta = int(round(np.random.uniform(0, 360)))
+            ell = patches.Ellipse(xy=tuple(p), width=np.cos(theta), height=np.sin(theta), angle=theta, facecolor='red', alpha=0.2)
+            ax.add_patch(ell)
+        
+    if vectors:
+    # plot vectors
+        cs2 = final_points
+        direct = []
+        for c_ in cs2:
+            rho, theta = cart2pol(c_[0], c_[1])
+            direct.append(pol2cart(1.3 - rho, theta))
+
+            ell = patches.Ellipse(xy=tuple(c_), width=np.cos(theta)/10, height=np.sin(theta)/5, angle=theta, facecolor='red', alpha=0.2)
+            ax.add_patch(ell)
+
+        direct = np.array(direct)
+        # ax.quiver(cs2[:, 0], cs2[:, 1],
+        #              direct[:, 0], direct[:, 1])
+
+
+    cs2 = final_points
+    ax.scatter(cs2[:, 0], cs2[:, 1])
+    ax.add_patch(shape_2)
+    ax.set_xlim(-3, 3)
+    ax.set_ylim(-3, 3)
+    ax.set_title('Final Point Positions')
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+
+
+
+    plt.show()
+  
+
+def plot(initial_points, final_points, iterations, movements, shape, parameters, ellipse=False, vectors=False):
+
+    fig, ax = plt.subplots(1, 3)
+
+    if shape=='circle' or shape=='semi_circle':
+        shape_1 = patches.Circle((0, 0), radius=1, fill=False)
+        shape_2 = patches.Circle((0, 0), radius=1, fill=False)
+    elif shape=='arbitrary':
+        x_v = parameters['x']
+        y_v = parameters['y']
+        shape_1 = patches.Polygon(list(zip(x_v, y_v)), closed=True, alpha=.1)
+        shape_2 = patches.Polygon(list(zip(x_v, y_v)), closed=True, alpha=.1)
+
+    assert not (ellipse == True and vectors == True), "parameters 'ellipse' and 'vectors' should not both be True"
+
+    if ellipse:
+        for p in final_points:
+            theta = int(round(np.random.uniform(0, 360)))
+            ell = patches.Ellipse(xy=tuple(p), width=np.cos(theta), height=np.sin(theta), angle=theta, facecolor='red', alpha=0.2)
+            ax[1].add_patch(ell)
+        
+    if vectors:
+    # plot vectors
+        cs2 = final_points
+        direct = []
+        for c_ in cs2:
+            rho, theta = cart2pol(c_[0], c_[1])
+            direct.append(pol2cart(1.3 - rho, theta))
+
+            ell = patches.Ellipse(xy=tuple(c_), width=.1, height=.05, angle=theta, facecolor='red', alpha=0.2)
+            ax[1].add_patch(ell)
+
+        direct = np.array(direct)
+        ax[1].quiver(cs2[:, 0], cs2[:, 1],
+                     direct[:, 0], direct[:, 1])
 
     cs1 = initial_points
     ax[0].scatter(cs1[:, 0], cs1[:, 1])
@@ -489,14 +563,26 @@ def lloyds_rel(iterations, shape, parameters):
                 # Calculate the centroid of the Voronoi cell
                 centroid = np.mean(vertices, axis=0)
                 
-                if shape=='circle':
+                if shape == 'circle':
                     # Clip centroid to make sure it's inside the region
                     dist = np.linalg.norm(centroid - center)
                     if dist > radius:
                         # Project the centroid back onto the circle boundary
                         centroid = center + (centroid - center) * radius / dist
 
-                elif shape=='arbitrary':
+                elif shape == 'semi_circle':
+
+                    # Clip centroid to make sure it's inside the region
+                    dist = np.linalg.norm(centroid - center)
+                    if dist > radius:
+                        # Project the centroid back onto the circle boundary
+                        centroid = center + (centroid - center) * radius / dist
+
+                    if centroid[1] < 0:
+                        # Move centroid back inside semi circle
+                        centroid[1] = 0
+
+                elif shape == 'arbitrary':
 
                     point = Point(centroid[0], centroid[1])
                     if not pg.contains(point):
@@ -516,93 +602,20 @@ def lloyds_rel(iterations, shape, parameters):
 
         points = np.array(new_points)
 
-    plot(initial_points=initial_points,
-        final_points=new_points, 
-        iterations=iterations, 
-        movements=movements, 
-        shape=shape, 
-        parameters=parameters)
-
-def lloyds_rel_3D(iterations, shape, parameters):
-
-    # generate points
-
-    x, y, pg = point_generation(128,
-                    shape,
-                    parameters,
-                    True)
-    
-    coords = []
-    for i in range(len(x)):
-        coords.append([x[i], y[i]])
-
-    initial_points = np.array(coords)
-    points = np.array(coords)
-
-    center = [0,0]
-    radius = .9
-    movements = []
-
-    for e in range(iterations):
-
-        # Compute Voronoi diagram
-        vor = Voronoi(points)
-
-        # Plot the Voronoi diagram using scipy's built-in function
-        # voronoi_plot_2d(vor, show_vertices=False)  # hide vertices for cleaner visualization
-        
-        # plt.show()
-
-        new_points = []
-        
-        # For each point, find the centroid of its Voronoi cell
-        for i in range(len(points)):
-            # Get the vertices of the Voronoi cell
-            region = vor.regions[vor.point_region[i]]
-            
-            if -1 in region:  # Ignore infinite regions
-                new_points.append(points[i])
-                
-            else:
-                # Extract the polygon that represents the Voronoi cell
-                vertices = np.array([vor.vertices[i] for i in region])
-                
-                # Calculate the centroid of the Voronoi cell
-                centroid = np.mean(vertices, axis=0)
-                
-                if shape=='circle':
-                    # Clip centroid to make sure it's inside the region
-                    dist = np.linalg.norm(centroid - center)
-                    if dist > radius:
-                        # Project the centroid back onto the circle boundary
-                        centroid = center + (centroid - center) * radius / dist
-
-                elif shape=='arbitrary':
-
-                    point = Point(centroid[0], centroid[1])
-                    if not pg.contains(point):
-                        centroid = nearest_points(pg, point)[0]
-
-                        centroid = [centroid.x, centroid.y]
-
-
-
-                new_points.append(list(centroid))
-        
-        new_points = np.array(new_points, dtype=np.float64)
-        # Update points to the new centroids
-        average_mov =  np.mean(np.linalg.norm(new_points - points, axis=1))
-        movements.append(average_mov)
-        print("EPOCH: ", e, "Average Displacement: ", average_mov)
-
-        points = np.array(new_points)
+    plot_final(new_points, 
+               shape, 
+               parameters, 
+               ellipse=False, 
+               vectors=True)
 
     plot(initial_points=initial_points,
         final_points=new_points, 
         iterations=iterations, 
         movements=movements, 
         shape=shape, 
-        parameters=parameters)
+        parameters=parameters,
+        ellipse=False,
+        vectors=True)
 
 
 

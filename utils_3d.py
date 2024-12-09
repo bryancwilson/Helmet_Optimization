@@ -22,8 +22,8 @@ def pol2cart_3d(r, theta, phi):
 
 def cart2pol_3d(x, y, z):
     rho = np.sqrt(x**2 + y**2 + z**2)
-    theta = np.arctan(y, x)
-    phi = np.arctan2(z, rho)
+    theta = np.arctan2(y, x)
+    phi = np.arccos(z / rho)
 
     return rho, theta, phi
 
@@ -130,7 +130,7 @@ def point_generation_3D(size, shape, parameters, plot=False):
 
         #     plt.show()
 
-    elif shape == 'sphere':
+    elif shape == 'sphere' or shape=='semi_sphere':
         r_bounds = [parameters['r_min'], parameters['r_max']]
         theta_bounds = [parameters['theta_min'], parameters['theta_max']]
         phi_bounds = [parameters['phi_min'], parameters['phi_max']]
@@ -175,7 +175,7 @@ def polt_3d_final(final_points):
     direct = []
     for c_ in cs2:
         rho, theta, phi = cart2pol_3d(c_[0], c_[1], c_[2])
-        direct.append(pol2cart_3d(1 - rho, theta, phi))
+        direct.append(pol2cart_3d(1.3 - rho, theta, phi))
 
     direct = np.array(direct)
 
@@ -194,7 +194,7 @@ def plot_3d(initial_points, final_points, iterations, movements, shape, paramete
     ax2 = fig.add_subplot(132, projection='3d')
     ax3 = fig.add_subplot(133, )
 
-    if shape=='sphere':
+    if shape=='sphere' or shape=='semi_sphere':
 
     # elif shape=='arbitrary':
     #     x_v = parameters['x']
@@ -295,6 +295,18 @@ def lloyds_rel_3D(iterations, shape, parameters):
                     if dist > radius:
                         # Project the centroid back onto the circle boundary
                         centroid = center + (centroid - center) * radius / dist
+
+                elif shape=='semi_sphere':
+
+                    # Clip centroid to make sure it's inside the region
+                    dist = np.linalg.norm(centroid - center)
+                    if dist > radius:
+                        # Project the centroid back onto the circle boundary
+                        centroid = center + (centroid - center) * radius / dist 
+
+
+                    if centroid[2] < 0:
+                        centroid[2] = 0                  
 
                 elif shape=='arbitrary':
 
