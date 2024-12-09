@@ -9,6 +9,9 @@ import math
 from scipy.spatial import Voronoi, voronoi_plot_2d
 from shapely.geometry import Polygon, Point
 from shapely.ops import nearest_points
+from mpl_toolkits.mplot3d import Axes3D
+from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+
 
 def pol2cart_3d(r, theta, phi):
     x = r * np.sin(phi) * np.cos(theta)
@@ -61,42 +64,68 @@ def point_generation_3D(size, shape, parameters, plot=False):
     # generate random seed of polar coordinates
 
     if shape == 'arbitrary':
-        fig, ax = plt.subplots()
+        # fig, ax = plt.subplots()
 
-        # vertices
-        x_v = parameters['x']
-        y_v = parameters['y']
-        z_v = parameters['z']
+        # # vertices
+        # x_v = parameters['x']
+        # y_v = parameters['y']
+        # z_v = parameters['z']
 
-        vertices = []
-        for x_, y_, z_ in zip(x_v, y_v, z_v):
-            vertices.append((x_, y_, z_))
+        # vertices = []
+        # for x_, y_, z_ in zip(x_v, y_v, z_v):
+        #     vertices.append((x_, y_, z_))
 
-        # generate polygon
-        pg = Polygon(vertices)
+        # # generate polygon
+        # pg = Poly3DCollection([vertices])
+
+        # # generate random points in 3D volume
+        # cart_x = []
+        # cart_y = []
+        # cart_z = []
+        # for _ in range(size):
+        #     x = np.random.uniform(np.min(x_v), np.max(x_v))
+        #     y = np.random.uniform(np.min(y_v), np.max(y_v))
+        #     z = np.random.uniform(np.min(z_v), np.max(z_v))    
+
+        #     cart_x.append(x)
+        #     cart_y.append(y)
+        #     cart_z.append(z)
+
+
+        # Create a 3D array of data
+        data = np.random.rand(10, 10, 10)
+
+        # Create a figure and axes
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+
+        # Plot the voxels
+        ax.voxels(data)
+
+        plt.show()
 
         # generate point in polygon
-        minx, miny, maxx, maxy = pg.bounds
-        cart_x = []
-        cart_y = []
-        while len(cart_x) < size:
-            x = np.random.uniform(minx, maxx)
-            y = np.random.uniform(miny, maxy)
-            point = Point(x, y)
-            if pg.contains(point):
-                cart_x.append(x)
-                cart_y.append(y)
+        # minx, miny, maxx, maxy = pg.bounds
+        # cart_x = []
+        # cart_y = []
+        # while len(cart_x) < size:
+        #     x = np.random.uniform(minx, maxx)
+        #     y = np.random.uniform(miny, maxy)
+        #     point = Point(x, y)
+        #     if pg.contains(point):
+        #         cart_x.append(x)
+        #         cart_y.append(y)
 
 
-        if plot:
-            polygon = patches.Polygon(list(zip(x_v, y_v)), closed=True, alpha=.1)
+        # if plot:
+        #     polygon = patches.Polygon(list(zip(x_v, y_v)), closed=True, alpha=.1)
 
-            ax.add_patch(polygon)
-            ax.scatter(np.array(cart_x), np.array(cart_y), marker='o', color='red', alpha=0.5)
-            ax.set_xlim([np.min(x_v), np.max(x_v)])
-            ax.set_ylim([np.min(y_v), np.max(y_v)])
+        #     ax.add_patch(polygon)
+        #     ax.scatter(np.array(cart_x), np.array(cart_y), marker='o', color='red', alpha=0.5)
+        #     ax.set_xlim([np.min(x_v), np.max(x_v)])
+        #     ax.set_ylim([np.min(y_v), np.max(y_v)])
 
-            plt.show()
+        #     plt.show()
 
     elif shape == 'sphere':
         r_bounds = [parameters['r_min'], parameters['r_max']]
