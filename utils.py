@@ -132,17 +132,23 @@ def _neighbors(points_list, k):
     return neigh
 
 # create base plot
-def plot_final(final_points, shape, parameters, ellipse=False, vectors=False):
+def plot_final(final_points, shape, parameters, ellipse=False, vectors=False, helmet_shape=None, helmet_parameters=None):
 
     fig, ax = plt.subplots()
 
     if shape=='circle' or shape=='semi_circle':
-        shape_1 = patches.Circle((0, 0), radius=1, fill=False)
+        #shape_1 = patches.Circle((0, 0), radius=1, fill=False)
         shape_2 = patches.Circle((0, 0), radius=1, fill=False)
+
+        if helmet_shape != None:
+            # shape_1 = patches.Circle((0, -.5), radius=1.3, fill=False)
+            shape_2_helmet = patches.Circle((0, -.25), radius=helmet_parameters['radius'], fill=False) 
+            # shape_2_helmet = patches.Ellipse((0, .5), width=3, height=1.5, fill=False) 
+
     elif shape=='arbitrary':
         x_v = parameters['x']
         y_v = parameters['y']
-        shape_1 = patches.Polygon(list(zip(x_v, y_v)), closed=True, alpha=.1)
+        #shape_1 = patches.Polygon(list(zip(x_v, y_v)), closed=True, alpha=.1)
         shape_2 = patches.Polygon(list(zip(x_v, y_v)), closed=True, alpha=.1)
 
     assert not (ellipse == True and vectors == True), "parameters 'ellipse' and 'vectors' should not both be True"
@@ -172,18 +178,20 @@ def plot_final(final_points, shape, parameters, ellipse=False, vectors=False):
     cs2 = final_points
     ax.scatter(cs2[:, 0], cs2[:, 1])
     ax.add_patch(shape_2)
+    ax.add_patch(shape_2_helmet)
     ax.set_xlim(-3, 3)
     ax.set_ylim(-3, 3)
     ax.set_title('Final Point Positions')
     ax.set_xlabel('X')
     ax.set_ylabel('Y')
 
-
-
     plt.show()
+
+    if helmet_shape:
+        return shape_2_helmet
   
 
-def plot(initial_points, final_points, iterations, movements, shape, parameters, ellipse=False, vectors=False):
+def plot_all(initial_points, final_points, iterations, movements, shape, parameters, ellipse=False, vectors=False):
 
     fig, ax = plt.subplots(1, 3)
 
@@ -201,7 +209,7 @@ def plot(initial_points, final_points, iterations, movements, shape, parameters,
     if ellipse:
         for p in final_points:
             theta = int(round(np.random.uniform(0, 360)))
-            ell = patches.Ellipse(xy=tuple(p), width=np.cos(theta), height=np.sin(theta), angle=theta, facecolor='red', alpha=0.2)
+            ell = patches.Ellipse(xy=tuple(p), width=.1, height=.05, angle=theta, facecolor='red', alpha=0.2)
             ax[1].add_patch(ell)
         
     if vectors:
@@ -243,9 +251,6 @@ def plot(initial_points, final_points, iterations, movements, shape, parameters,
     ax[2].set_ylabel('Avg Displacement')
 
     plt.show()
-  
-
-    
 
 # sunflower
 def radius(k, n, b):
@@ -516,7 +521,7 @@ def particle_swarm(iterations, hp):
 
 
 
-def lloyds_rel(iterations, shape, parameters):
+def lloyds_rel(iterations, shape, parameters, plot=False):
 
     # generate points
 
@@ -602,20 +607,107 @@ def lloyds_rel(iterations, shape, parameters):
 
         points = np.array(new_points)
 
-    plot_final(new_points, 
-               shape, 
-               parameters, 
-               ellipse=False, 
-               vectors=True)
+    if plot:
+        plot_final(new_points, 
+                shape, 
+                parameters, 
+                ellipse=False, 
+                vectors=True)
 
-    plot(initial_points=initial_points,
-        final_points=new_points, 
-        iterations=iterations, 
-        movements=movements, 
-        shape=shape, 
-        parameters=parameters,
-        ellipse=False,
-        vectors=True)
+        plot_all(initial_points=initial_points,
+            final_points=new_points, 
+            iterations=iterations, 
+            movements=movements, 
+            shape=shape, 
+            parameters=parameters,
+            ellipse=True,
+            vectors=False)
+        
+    return new_points
+
+def optimize_angle(shape, parameters, new_points, depth, helmet_parameters):
+
+    helmet_shape = plot_final(new_points, 
+        shape, 
+        parameters, 
+        ellipse=False, 
+        vectors=True,
+        helmet_shape='Ellipse',
+        helmet_parameters=helmet_parameters)
+    
+    thetas = []
+    helmet_path = helmet_shape.get_path()
+    # shape_2_helmet = patches.Circle((0, -.25), radius=1.6, fill=False) 
+
+    radius = helmet_parameters['center']
+
+    point_angle_dict = {}
+    for np_ in new_points:
+
+        best_obj_val = float('inf')
+        used_ts = []
+        # iterate through n points on helmet shape perimeter
+        for t_ in np.linspace(0, np.pi, 100):
+
+            if t_ in used_ts:
+                continue
+
+            x_, y_ = pol2cart(1.6, t_)
+            y_+=radius[1] # offset due to radius
+
+            dist = np.linalg.norm(np.array(x_, y_) - np_) # calculate distance between points
+            angle_pp = np.atan2(y_ - np_[1], x_ - np_[0]) # calculate angle between points
+            angle_pc = np.atan2(y_ - radius[1], x_ - radius[0])
+
+            obj_val = np.abs(depth - dist) + np.abs(angle_pp - angle_pc) # evaluate objective function
+
+            if obj_val < best_obj_val:
+                point_angle_dict[tuple(np_)] = (x_, y_, t_, dist, np.abs(angle_pp - angle_pc))
+                best_obj_val = obj_val
+
+        used_ts.append(t_)
+
+    # plot resulting element positions
+    fig, ax = plt.subplots()
+    shape = patches.Circle((0, 0), radius=1, fill=False)
+    shape_helmet = patches.Circle(helmet_parameters['center'], radius=1.6, fill=False) 
+
+    values = np.array(list(point_angle_dict.values()))[:, :2]
+    ax.scatter(values[:, 0], values[:, 1])
+    ax.scatter(new_points[:, 0], new_points[:, 1])
+
+    for i in range(len(new_points)):
+        ax.plot([new_points[i][0], values[i][0]], [new_points[i][1], values[i][1]], 'k-')
+
+    ax.add_patch(shape)
+    # ax.add_patch(shape_helmet)
+    ax.set_xlim(-3, 3)
+    ax.set_ylim(-3, 3)
+    ax.set_title('Element Assignment Plot')
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    plt.show()
+
+    
+
+
+
+
+
+
+
+
+
+            
+
+
+
+
+
+
+
+
+
 
 
 
