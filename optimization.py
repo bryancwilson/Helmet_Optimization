@@ -8,13 +8,45 @@ from utils_3d import *
 SIZE_COORD_ARRAY = 128
 POP_SIZE = 20
 
+# in millimeters
+# distance from region of interest to helmet
+ELLIPSE_A_DIM = 100
+ELLIPSE_B_DIM = 100
+ELLIPSE_C_DIM = 50
+RADIUS_OF_ROI = 5
+ELEMENT_SIZE = 5
+HOLE_RADIUS = 10
+DEPTH = 75
+
+parameters = {'r_min': 0,
+              'r_max': .9,
+              'theta_min': 0,
+              'theta_max': 2*np.pi,
+              'phi_min': 0,
+              'phi_max': 2*np.pi}
+
+helmet_parameters = {'radius': 1,
+                     'center': (0, 0, 0),
+                     'a': (ELLIPSE_A_DIM / RADIUS_OF_ROI) + 1,
+                     'b': (ELLIPSE_B_DIM / RADIUS_OF_ROI) + 1,
+                     'c': (ELLIPSE_C_DIM / RADIUS_OF_ROI) + 1,
+                     'circumference': (4*(np.pi / 2) ** (((ELLIPSE_A_DIM / RADIUS_OF_ROI) + 1) / ((ELLIPSE_B_DIM / RADIUS_OF_ROI) + 1)))*((ELLIPSE_B_DIM / RADIUS_OF_ROI) + 1),
+                     'ele_size': ELEMENT_SIZE / RADIUS_OF_ROI,
+                     'hole_size': HOLE_RADIUS / RADIUS_OF_ROI}
+
+iterations = 100
+
 # ======================================= 2D ===========================================#
 # circle parameters
-shape = 'circle'
-parameters = {'r_min': 0,
-              'r_max': 1,
-              'theta_min': 0,
-              'theta_max': 360}
+# shape = 'circle'
+
+# spaced_points = lloyds_rel(iterations, 'circle', parameters, False)
+
+# optimize_angle(shape='ellipse',
+#                parameters=parameters,
+#                new_points=spaced_points,
+#                depth = 15,
+#                helmet_parameters=helmet_parameters)
 
 # # polygon parameters
 # shape = 'arbitrary'
@@ -23,26 +55,14 @@ parameters = {'r_min': 0,
 # #               'y': [0, 1, 0, -1]}
 # parameters = {'x': x,
 #               'y': y}
-
 # lloyds_rel(200, shape, parameters)
 
 # ======================================= 3D ===========================================#
 
-parameters = {'r_min': 0,
-              'r_max': .9,
-              'theta_min': 0,
-              'theta_max': np.pi,
-              'phi_min': -1*(np.pi) / 2,
-              'phi_max': np.pi / 2}
-helmet_parameters = {'radius': 1.8,
-                     'center': (0, -.25)}
-spaced_points = lloyds_rel(128, 'semi_circle', parameters, False)
+spaced_points = lloyds_rel_3D(iterations, 'sphere', parameters, False)
 
-optimize_angle(shape='semi_circle',
-               parameters=parameters,
-               new_points=spaced_points,
-               depth = 1,
-               helmet_parameters=helmet_parameters)
-
-# lloyds_rel_3D(128, 'semi_sphere', parameters)
-
+optimize_angle_3d(shape='ellipsoid',
+                  parameters=parameters,
+                  new_points=spaced_points,
+                  depth=DEPTH / RADIUS_OF_ROI,
+                  helmet_parameters=helmet_parameters)

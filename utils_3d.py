@@ -11,37 +11,8 @@ from shapely.geometry import Polygon, Point
 from shapely.ops import nearest_points
 from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
-
-
-def pol2cart_3d(r, theta, phi):
-    x = r * np.sin(phi) * np.cos(theta)
-    y = r * np.sin(phi) * np.sin(theta)   
-    z = r * np.cos(phi)
-
-    return x, y, z
-
-def cart2pol_3d(x, y, z):
-    rho = np.sqrt(x**2 + y**2 + z**2)
-    theta = np.arctan2(y, x)
-    phi = np.arccos(z / rho)
-
-    return rho, theta, phi
-
-def pol2cart_array_3d(r_s, theta_s, phi_s):
-    cart_x = []
-    cart_y = []
-    cart_z = []
-
-    for r, t, p in zip(r_s, theta_s, phi_s):
-        x, y, z = pol2cart_3d(r, t, p)
-        cart_x.append(x)
-        cart_y.append(y)
-        cart_z.append(z)
-    
-    return cart_x, cart_y, cart_z
-
-def cart2pol_array_3d():
-    pass
+from plotting_func import *
+from conv_func import *
 
 # generate random polygon
 def generate_random_polygon_3d(num_points, min_x, max_x, min_y, max_y):
@@ -159,90 +130,7 @@ def point_generation_3D(size, shape, parameters, plot=False):
 
     return cart_x, cart_y, cart_z, pg
 
-# create base plot
-def polt_3d_final(final_points):
-    fig = plt.figure()
-    ax2 = fig.add_subplot(projection='3d')
-
-    # plot sphere
-    u, v = np.mgrid[0:2*np.pi:20j, 0:np.pi:10j]
-    x = np.cos(u)*np.sin(v)
-    y = np.sin(u)*np.sin(v)
-    z = np.cos(v)
-    
-    # plot vectors
-    cs2 = final_points
-    direct = []
-    for c_ in cs2:
-        rho, theta, phi = cart2pol_3d(c_[0], c_[1], c_[2])
-        direct.append(pol2cart_3d(1.3 - rho, theta, phi))
-
-    direct = np.array(direct)
-
-    ax2.scatter(cs2[:, 0], cs2[:, 1], cs2[:, 2])
-    ax2.quiver(cs2[:, 0], cs2[:, 1], cs2[:, 2],
-               direct[:, 0], direct[:, 1], direct[:, 2])
-    
-    ax2.plot_wireframe(x, y, z, color="k")
-    
-    plt.show()
-
-def plot_3d(initial_points, final_points, iterations, movements, shape, parameters):
-
-    fig = plt.figure()
-    ax1 = fig.add_subplot(131, projection='3d')
-    ax2 = fig.add_subplot(132, projection='3d')
-    ax3 = fig.add_subplot(133, )
-
-    if shape=='sphere' or shape=='semi_sphere':
-
-    # elif shape=='arbitrary':
-    #     x_v = parameters['x']
-    #     y_v = parameters['y']
-    #     shape_1 = patches.Polygon(list(zip(x_v, y_v)), closed=True, alpha=.1)
-    #     shape_2 = patches.Polygon(list(zip(x_v, y_v)), closed=True, alpha=.1)
-
-        u, v = np.mgrid[0:2*np.pi:20j, 0:np.pi:10j]
-        x = np.cos(u)*np.sin(v)
-        y = np.sin(u)*np.sin(v)
-        z = np.cos(v)
-
-    cs1 = initial_points
-    ax1.scatter(cs1[:, 0], cs1[:, 1], cs1[:, 2])
-    ax1.plot_wireframe(x, y, z, color="b")
-    ax1.set_xlim(-1, 1)
-    ax1.set_ylim(-1, 1)
-    ax1.set_title('Initial Point Positions')
-    ax1.set_xlabel('X')
-    ax1.set_ylabel('Y')
-
-    cs2 = final_points
-    direct = []
-    for c_ in cs2:
-        rho, theta, phi = cart2pol_3d(c_[0], c_[1], c_[2])
-        direct.append(pol2cart_3d(1 - rho, theta, phi))
-
-    direct = np.array(direct)
-
-    ax2.scatter(cs2[:, 0], cs2[:, 1], cs2[:, 2])
-    ax2.quiver(cs2[:, 0], cs2[:, 1], cs2[:, 2],
-               direct[:, 0], direct[:, 1], direct[:, 2])
-    
-    ax2.plot_wireframe(x, y, z, color="b")
-    ax2.set_xlim(-1, 1)
-    ax2.set_ylim(-1, 1)
-    ax2.set_title('Final Point Positions')
-    ax2.set_xlabel('X')
-    ax2.set_ylabel('Y')
-
-    ax3.plot(np.linspace(1, iterations, iterations), movements)
-    ax3.set_title('Average Displacement Over Iterations')
-    ax3.set_xlabel('Iterations')
-    ax3.set_ylabel('Avg Displacement')
-
-    plt.show()
-
-def lloyds_rel_3D(iterations, shape, parameters):
+def lloyds_rel_3D(iterations, shape, parameters, plot):
 
     # generate points
 
@@ -316,8 +204,6 @@ def lloyds_rel_3D(iterations, shape, parameters):
 
                         centroid = [centroid.x, centroid.y]
 
-
-
                 new_points.append(list(centroid))
         
         new_points = np.array(new_points, dtype=np.float64)
@@ -328,11 +214,135 @@ def lloyds_rel_3D(iterations, shape, parameters):
 
         points = np.array(new_points)
 
-    polt_3d_final(final_points=new_points)
+    if plot:
+        plot_3d_final(final_points=new_points)
 
-    plot_3d(initial_points=initial_points,
-        final_points=new_points, 
-        iterations=iterations, 
-        movements=movements, 
-        shape=shape, 
-        parameters=parameters)
+        plot_3d(initial_points=initial_points,
+            final_points=new_points, 
+            iterations=iterations, 
+            movements=movements, 
+            shape=shape, 
+            parameters=parameters)
+        
+    return points
+    
+def optimize_angle_3d(shape, parameters, new_points, depth, helmet_parameters):
+
+    plot_3d_final(new_points)
+
+    focal_points = new_points
+    new_points = list(new_points) 
+
+    center = helmet_parameters['center']
+
+    point_angle_dict = {}
+    while new_points != []:
+
+        # remove focal point from stack
+        np_ = new_points.pop(0)
+
+        best_obj_val = float('inf')
+        used_ts = []
+        used_ps = []
+
+        x_s = []
+        y_s = []
+        z_s = []
+
+        # iterate through points on helmet surface
+        steps = (helmet_parameters['circumference'] / 2) / helmet_parameters['ele_size']
+        for t_ in np.linspace(0, 2*np.pi, int(round(steps))):
+            for p_ in np.linspace(-1*(np.pi / 2), (np.pi / 2), int(round(steps))):
+
+                # ignore angles that overlap with helmet opening
+                if p_ > -1*np.arctan2(helmet_parameters['hole_size'], helmet_parameters['c']) and p_ < np.arctan2(helmet_parameters['hole_size'], helmet_parameters['c']):
+                    continue
+
+                if shape=='ellipsoid':
+                    r = tp2rad_ellipsoid(t_,
+                                         p_,
+                                         helmet_parameters['a'],
+                                         helmet_parameters['b'],
+                                         helmet_parameters['c'])
+                    
+                    x_, y_, z_ = pol2cart_3d(r, t_, p_)
+                    
+                    x_s.append(x_)
+                    y_s.append(y_)
+                    z_s.append(z_)
+
+                # else:
+                #     x_, y_ = pol2cart(helmet_parameters['radius'], t_)
+                #     y_+=center[1] # offset due to radius
+
+                dist = np.linalg.norm(np.array([x_, y_, z_]) - np_) # calculate distance between points
+
+                # theta calculation
+                angle_pp_t = np.atan2(y_ - np_[1], x_ - np_[0]) # calculate angle between focal point and element being auditioned
+                angle_pc_t = np.atan2(y_ - center[1], x_ - center[0]) # angle between focal point and the center
+
+                # phi calculation
+                angle_pp_p = np.atan2(z_ - np_[2], x_ - np_[0]) # calculate angle between focal point and element being auditioned
+                angle_pc_p = np.atan2(z_ - center[2], x_ - center[0]) # angle between focal point and the center
+
+                obj_val = 1*np.abs(depth - dist) + 1*np.abs(angle_pp_t - angle_pc_t) + 1*np.abs(angle_pp_p - angle_pc_p)# evaluate objective function
+
+                # assign focal point to element according to objective function
+                if obj_val < best_obj_val:
+                    point_angle_dict[tuple(np_)] = (x_, y_, z_, t_, dist, np.abs(angle_pp_t - angle_pc_t), np.abs(angle_pp_p - angle_pc_p), obj_val)
+                    best_obj_val = obj_val
+
+            # check if new assignment is better than old assignment
+            for key, val in point_angle_dict.items():
+                if val[0] == point_angle_dict[tuple(np_)][0] and val[1] == point_angle_dict[tuple(np_)][1] and val[2] == point_angle_dict[tuple(np_)][2] and best_obj_val < val[7]:
+                    new_points.append(np.array(key))
+                    point_angle_dict[key] = (0, 0, 0, 0, 0, 0, 0, 0)
+
+            used_ts.append(t_)
+            used_ps.append(p_)
+
+    # plot resulting element positions
+    fig = plt.figure()
+    ax1 = fig.add_subplot(projection='3d')
+
+    # plot sphere
+    u, v = np.mgrid[0:2*np.pi:20j, 0:np.pi:10j]
+    x = np.cos(u)*np.sin(v)
+    y = np.sin(u)*np.sin(v)
+    z = np.cos(v)
+
+    values = np.array(list(point_angle_dict.values()))
+
+    # plot skeleton of helmet
+    # ax1.scatter(x_s, y_s, z_s)
+
+    ax1.scatter(values[:, 0], values[:, 1], values[:, 2]) # plot element positions
+    ax1.scatter(focal_points[:, 0], focal_points[:, 1], focal_points[:, 2]) # plot focal point positions
+    ax1.set_xlim(-20, 20)
+    ax1.set_ylim(-20, 20)
+    ax1.set_zlim(-20, 20)
+
+    for i in range(len(focal_points)):
+        ax1.plot([focal_points[i][0], values[i][0]], [focal_points[i][1], values[i][1]], [focal_points[i][2], values[i][2]], 'k-')
+    
+    ax1.plot_wireframe(x, y, z, color="k")
+    
+    plt.show()
+
+    fig1, (ax1, ax2, ax3) = plt.subplots(1, 3)
+
+    ax1.hist(values[:, 4]*5)
+    ax1.set_xlabel('Distance From Element to Focal Point (mm)')
+    ax1.set_ylabel('Frequency')
+    ax1.set_title('Distance Histogram')
+
+    ax2.hist(values[:, 5])
+    ax2.set_xlabel('Angle of Element Relative To Helmet Surface (radians)')
+    ax2.set_ylabel('Frequency')
+    ax2.set_title('Angle Histogram (THETA)')
+
+    ax3.hist(values[:, 6])
+    ax3.set_xlabel('Angle of Element Relative To Helmet Surface (radians)')
+    ax3.set_ylabel('Frequency')
+    ax3.set_title('Angle Histogram (PHI)')
+    plt.show()

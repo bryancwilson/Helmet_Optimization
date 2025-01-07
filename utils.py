@@ -16,6 +16,10 @@ def pol2cart(r, theta):
     y = r * np.sin(theta)
     return x, y
 
+def theta2rad_ellipse(theta, a, b):
+    r = (a*b) / math.sqrt(b**2 * math.cos(theta)**2 + a**2 * math.sin(theta)**2)
+    return r
+
 def cart2pol(x, y):
     rho = np.sqrt(x**2 + y**2)
     phi = np.arctan2(y, x)
@@ -136,14 +140,20 @@ def plot_final(final_points, shape, parameters, ellipse=False, vectors=False, he
 
     fig, ax = plt.subplots()
 
-    if shape=='circle' or shape=='semi_circle':
+    if shape=='circle' or shape=='semi_circle' or shape=='ellipse':
         #shape_1 = patches.Circle((0, 0), radius=1, fill=False)
         shape_2 = patches.Circle((0, 0), radius=1, fill=False)
 
-        if helmet_shape != None:
-            # shape_1 = patches.Circle((0, -.5), radius=1.3, fill=False)
-            shape_2_helmet = patches.Circle((0, -.25), radius=helmet_parameters['radius'], fill=False) 
-            # shape_2_helmet = patches.Ellipse((0, .5), width=3, height=1.5, fill=False) 
+        # if helmet_shape != None:
+        #     # shape_1 = patches.Circle((0, -.5), radius=1.3, fill=False)
+        #     shape_2_helmet = patches.Circle((0, -.25), radius=helmet_parameters['radius'], fill=False) 
+        #     # shape_2_helmet = patches.Ellipse((0, .5), width=3, height=1.5, fill=False) 
+
+        if helmet_shape=='Ellipse':
+            shape_2_helmet = patches.Ellipse(helmet_parameters['center'], 
+                                             width=helmet_parameters['a'], 
+                                             height=helmet_parameters['b'], 
+                                             fill=False) 
 
     elif shape=='arbitrary':
         x_v = parameters['x']
@@ -179,8 +189,8 @@ def plot_final(final_points, shape, parameters, ellipse=False, vectors=False, he
     ax.scatter(cs2[:, 0], cs2[:, 1])
     ax.add_patch(shape_2)
     ax.add_patch(shape_2_helmet)
-    ax.set_xlim(-3, 3)
-    ax.set_ylim(-3, 3)
+    ax.set_xlim(-25, 25)
+    ax.set_ylim(-25, 25)
     ax.set_title('Final Point Positions')
     ax.set_xlabel('X')
     ax.set_ylabel('Y')
@@ -637,55 +647,94 @@ def optimize_angle(shape, parameters, new_points, depth, helmet_parameters):
     
     thetas = []
     helmet_path = helmet_shape.get_path()
+    focal_points = new_points
+    new_points = list(new_points)
     # shape_2_helmet = patches.Circle((0, -.25), radius=1.6, fill=False) 
 
-    radius = helmet_parameters['center']
+    center = helmet_parameters['center']
 
     point_angle_dict = {}
-    for np_ in new_points:
+    while new_points != []:
+
+        # remove focal point from list
+        np_ = new_points.pop(0)
 
         best_obj_val = float('inf')
         used_ts = []
-        # iterate through n points on helmet shape perimeter
-        for t_ in np.linspace(0, np.pi, 100):
 
-            if t_ in used_ts:
+        # iterate through n points on helmet shape perimeter
+        steps = (helmet_parameters['circumference'] / 2) / helmet_parameters['ele_size']
+        for t_ in np.linspace(0, np.pi, int(round(steps))):
+
+            # ignore angles that overlap with helmet opening
+            if t_ > ((np.pi / 2) - np.arctan2(helmet_parameters['hole_size'], helmet_parameters['b'])) and t_ < ((np.pi / 2) + np.arctan2(helmet_parameters['hole_size'], helmet_parameters['b'])):
                 continue
 
-            x_, y_ = pol2cart(1.6, t_)
-            y_+=radius[1] # offset due to radius
+            # if t_ in used_ts:
+            #     continue
+
+            if shape=='ellipse':
+                r = theta2rad_ellipse(t_,
+                                  helmet_parameters['a'],
+                                  helmet_parameters['b'])
+                
+                x_, y_ = pol2cart(r, t_)
+                
+            else:
+                x_, y_ = pol2cart(helmet_parameters['radius'], t_)
+                y_+=center[1] # offset due to radius
 
             dist = np.linalg.norm(np.array(x_, y_) - np_) # calculate distance between points
             angle_pp = np.atan2(y_ - np_[1], x_ - np_[0]) # calculate angle between points
-            angle_pc = np.atan2(y_ - radius[1], x_ - radius[0])
+            angle_pc = np.atan2(y_ - center[1], x_ - center[0])
 
-            obj_val = np.abs(depth - dist) + np.abs(angle_pp - angle_pc) # evaluate objective function
+            obj_val = 0*np.abs(depth - dist) + 1*np.abs(angle_pp - angle_pc) # evaluate objective function
 
+            # assign focal point to element according to objective function
             if obj_val < best_obj_val:
-                point_angle_dict[tuple(np_)] = (x_, y_, t_, dist, np.abs(angle_pp - angle_pc))
+                point_angle_dict[tuple(np_)] = (x_, y_, t_, dist, np.abs(angle_pp - angle_pc), obj_val)
                 best_obj_val = obj_val
+
+        # check if new assignment is better than old assignment
+        for key, val in point_angle_dict.items():
+            if val[0] == point_angle_dict[tuple(np_)][0] and val[1] == point_angle_dict[tuple(np_)][1] and best_obj_val < val[5]:
+                new_points.append(np.array(key))
+                point_angle_dict[key] = (0, 0, 0, 0, 0, 0)
 
         used_ts.append(t_)
 
     # plot resulting element positions
-    fig, ax = plt.subplots()
+    fig, (ax1, ax2, ax3) = plt.subplots(1, 3)
     shape = patches.Circle((0, 0), radius=1, fill=False)
-    shape_helmet = patches.Circle(helmet_parameters['center'], radius=1.6, fill=False) 
+    shape_helmet = patches.Ellipse(helmet_parameters['center'], 
+                                             width=helmet_parameters['a'], 
+                                             height=helmet_parameters['b'], 
+                                             fill=False) 
 
-    values = np.array(list(point_angle_dict.values()))[:, :2]
-    ax.scatter(values[:, 0], values[:, 1])
-    ax.scatter(new_points[:, 0], new_points[:, 1])
+    values = np.array(list(point_angle_dict.values()))
+    ax1.scatter(values[:, 0], values[:, 1])
+    ax1.scatter(focal_points[:, 0], focal_points[:, 1])
 
-    for i in range(len(new_points)):
-        ax.plot([new_points[i][0], values[i][0]], [new_points[i][1], values[i][1]], 'k-')
+    for i in range(len(focal_points)):
+        ax1.plot([focal_points[i][0], values[i][0]], [focal_points[i][1], values[i][1]], 'k-')
 
-    ax.add_patch(shape)
+    ax1.add_patch(shape)
     # ax.add_patch(shape_helmet)
-    ax.set_xlim(-3, 3)
-    ax.set_ylim(-3, 3)
-    ax.set_title('Element Assignment Plot')
-    ax.set_xlabel('X')
-    ax.set_ylabel('Y')
+    ax1.set_xlim(-25, 25)
+    ax1.set_ylim(-25, 25)
+    ax1.set_title('Element Assignment Plot')
+    ax1.set_xlabel('X')
+    ax1.set_ylabel('Y')
+
+    ax2.hist(values[:, 3])
+    ax2.set_xlabel('Distance From Element to Focal Point')
+    ax2.set_ylabel('Frequency')
+    ax2.set_title('Distance Histogram')
+
+    ax3.hist(values[:, 4])
+    ax3.set_xlabel('Angle of Element Relative To Helmet Surface (radians)')
+    ax3.set_ylabel('Frequency')
+    ax3.set_title('Angle Histogram')
     plt.show()
 
     
