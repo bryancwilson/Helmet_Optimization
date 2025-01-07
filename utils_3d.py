@@ -226,7 +226,7 @@ def lloyds_rel_3D(iterations, shape, parameters, plot):
         
     return points
     
-def optimize_angle_3d(shape, parameters, new_points, depth, helmet_parameters):
+def optimize_angle_3d(shape, opt_parameters, roi_parameters, new_points, depth, helmet_parameters):
 
     plot_3d_final(new_points)
 
@@ -250,13 +250,17 @@ def optimize_angle_3d(shape, parameters, new_points, depth, helmet_parameters):
         z_s = []
 
         # iterate through points on helmet surface
-        steps = (helmet_parameters['circumference'] / 2) / helmet_parameters['ele_size']
+        # steps = (helmet_parameters['circumference'] / 2) / helmet_parameters['ele_size'] - 12
+        steps = 12
         for t_ in np.linspace(0, 2*np.pi, int(round(steps))):
-            for p_ in np.linspace(-1*(np.pi / 2), (np.pi / 2), int(round(steps))):
+            for p_ in np.linspace(opt_parameters['phi_lower_bound'], opt_parameters['phi_upper_bound'], int(round(steps))):
 
                 # ignore angles that overlap with helmet opening
                 if p_ > -1*np.arctan2(helmet_parameters['hole_size'], helmet_parameters['c']) and p_ < np.arctan2(helmet_parameters['hole_size'], helmet_parameters['c']):
                     continue
+
+                # ignore angles that place element locations too closely together (<10mm)
+
 
                 if shape=='ellipsoid':
                     r = tp2rad_ellipsoid(t_,
@@ -278,14 +282,14 @@ def optimize_angle_3d(shape, parameters, new_points, depth, helmet_parameters):
                 dist = np.linalg.norm(np.array([x_, y_, z_]) - np_) # calculate distance between points
 
                 # theta calculation
-                angle_pp_t = np.atan2(y_ - np_[1], x_ - np_[0]) # calculate angle between focal point and element being auditioned
-                angle_pc_t = np.atan2(y_ - center[1], x_ - center[0]) # angle between focal point and the center
+                angle_pp_t = np.arctan2(y_ - np_[1], x_ - np_[0]) # calculate angle between focal point and element being auditioned
+                angle_pc_t = np.arctan2(y_ - center[1], x_ - center[0]) # angle between focal point and the center
 
                 # phi calculation
-                angle_pp_p = np.atan2(z_ - np_[2], x_ - np_[0]) # calculate angle between focal point and element being auditioned
-                angle_pc_p = np.atan2(z_ - center[2], x_ - center[0]) # angle between focal point and the center
+                angle_pp_p = np.arctan2(z_ - np_[2], x_ - np_[0]) # calculate angle between focal point and element being auditioned
+                angle_pc_p = np.arctan2(z_ - center[2], x_ - center[0]) # angle between focal point and the center
 
-                obj_val = 1*np.abs(depth - dist) + 1*np.abs(angle_pp_t - angle_pc_t) + 1*np.abs(angle_pp_p - angle_pc_p)# evaluate objective function
+                obj_val = 0*np.abs(depth - dist) + 1*np.abs(angle_pp_t - angle_pc_t) + 1*np.abs(angle_pp_p - angle_pc_p)# evaluate objective function
 
                 # assign focal point to element according to objective function
                 if obj_val < best_obj_val:
@@ -312,23 +316,26 @@ def optimize_angle_3d(shape, parameters, new_points, depth, helmet_parameters):
     z = np.cos(v)
 
     values = np.array(list(point_angle_dict.values()))
+    print("LENGTH OF VALUES", len(values))
 
-    # plot skeleton of helmet
+    ## plot skeleton of helmet
     # ax1.scatter(x_s, y_s, z_s)
 
-    ax1.scatter(values[:, 0], values[:, 1], values[:, 2]) # plot element positions
+    ax1.scatter(values[:, 0], values[:, 1], values[:, 2], s=280, marker='h') # plot element positions
     ax1.scatter(focal_points[:, 0], focal_points[:, 1], focal_points[:, 2]) # plot focal point positions
     ax1.set_xlim(-20, 20)
     ax1.set_ylim(-20, 20)
     ax1.set_zlim(-20, 20)
 
+    # connecting focal points to element locations
     for i in range(len(focal_points)):
         ax1.plot([focal_points[i][0], values[i][0]], [focal_points[i][1], values[i][1]], [focal_points[i][2], values[i][2]], 'k-')
     
     ax1.plot_wireframe(x, y, z, color="k")
-    
+
     plt.show()
 
+    # Plotting Histograms
     fig1, (ax1, ax2, ax3) = plt.subplots(1, 3)
 
     ax1.hist(values[:, 4]*5)
