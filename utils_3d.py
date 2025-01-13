@@ -226,7 +226,7 @@ def lloyds_rel_3D(iterations, shape, parameters, plot):
         
     return points
     
-def optimize_angle_3d(shape, opt_parameters, roi_parameters, new_points, depth, helmet_parameters):
+def optimize_angle_3d(shape, opt_parameters, roi_parameters, new_points, depth, helmet_parameters, radius_of_roi):
 
     plot_3d_final(new_points)
 
@@ -236,14 +236,13 @@ def optimize_angle_3d(shape, opt_parameters, roi_parameters, new_points, depth, 
     center = helmet_parameters['center']
 
     point_angle_dict = {}
+    used_tps = []
     while new_points != []:
 
         # remove focal point from stack
         np_ = new_points.pop(0)
 
         best_obj_val = float('inf')
-        used_ts = []
-        used_ps = []
 
         x_s = []
         y_s = []
@@ -251,7 +250,8 @@ def optimize_angle_3d(shape, opt_parameters, roi_parameters, new_points, depth, 
 
         # iterate through points on helmet surface
         # steps = (helmet_parameters['circumference'] / 2) / helmet_parameters['ele_size'] - 12
-        steps = 12
+        steps = 20
+        neighbors = 4
         for t_ in np.linspace(0, 2*np.pi, int(round(steps))):
             for p_ in np.linspace(opt_parameters['phi_lower_bound'], opt_parameters['phi_upper_bound'], int(round(steps))):
 
@@ -259,8 +259,9 @@ def optimize_angle_3d(shape, opt_parameters, roi_parameters, new_points, depth, 
                 if p_ > -1*np.arctan2(helmet_parameters['hole_size'], helmet_parameters['c']) and p_ < np.arctan2(helmet_parameters['hole_size'], helmet_parameters['c']):
                     continue
 
-                # ignore angles that place element locations too closely together (<10mm)
-
+                # ignore used angles
+                if (t_, p_) in used_tps:
+                    continue
 
                 if shape=='ellipsoid':
                     r = tp2rad_ellipsoid(t_,
@@ -293,18 +294,44 @@ def optimize_angle_3d(shape, opt_parameters, roi_parameters, new_points, depth, 
 
                 # assign focal point to element according to objective function
                 if obj_val < best_obj_val:
-                    point_angle_dict[tuple(np_)] = (x_, y_, z_, t_, dist, np.abs(angle_pp_t - angle_pc_t), np.abs(angle_pp_p - angle_pc_p), obj_val)
+                    point_angle_dict[tuple(np_)] = (x_, y_, z_, t_, p_, dist, np.abs(angle_pp_t - angle_pc_t), np.abs(angle_pp_p - angle_pc_p), obj_val)
                     best_obj_val = obj_val
 
-            # check if new assignment is better than old assignment
-            for key, val in point_angle_dict.items():
-                if val[0] == point_angle_dict[tuple(np_)][0] and val[1] == point_angle_dict[tuple(np_)][1] and val[2] == point_angle_dict[tuple(np_)][2] and best_obj_val < val[7]:
-                    new_points.append(np.array(key))
-                    point_angle_dict[key] = (0, 0, 0, 0, 0, 0, 0, 0)
+        # check if new assignment is better than old assignment
+        for key, val in point_angle_dict.items():
+            if [val[0], val[1], val[2]] == [point_angle_dict[tuple(np_)][0], point_angle_dict[tuple(np_)][1], point_angle_dict[tuple(np_)][2]] and point_angle_dict[key] != (0, 0, 0, 0, 0, 0, 0, 0, 0) and best_obj_val < val[8]:
+                new_points.append(np.array(key))
+                point_angle_dict[key] = (0, 0, 0, 0, 0, 0, 0, 0, 0)
+            # elif val[0] == point_angle_dict[tuple(np_)][0] and val[1] == point_angle_dict[tuple(np_)][1] and val[2] == point_angle_dict[tuple(np_)][2] and best_obj_val >= val[7]:
+            #     new_points.append(np.array(tuple(np_)))
+            #     point_angle_dict[tuple(np_)] = (0, 0, 0, 0, 0, 0, 0, 0)
 
-            used_ts.append(t_)
-            used_ps.append(p_)
+        used_tps.append((point_angle_dict[tuple(np_)][3], point_angle_dict[tuple(np_)][4]))
 
+
+    values = np.array(list(point_angle_dict.values()))
+
+    # check for duplicate element positions in list
+    neigh = NearestNeighbors(n_neighbors=neighbors)
+    element_locations = np.array(values[:, :3])
+    unique_coords = []
+    for i in range(len(element_locations)):
+        if list(element_locations[i]) not in unique_coords:
+            unique_coords.append(list(element_locations[i]))
+        else:
+            print("REPEAT POINT")
+        element_locations[i] = list(element_locations[i])
+
+    neigh.fit(element_locations)
+
+    # calculate the min distances 
+    element_locations = np.reshape(values[:, :3], (128, 3))
+    max_dists = []
+    for v in element_locations:
+        dists, nbrs = neigh.kneighbors(np.array([v]))
+        max_dist = np.max(dists[0][1:])
+        max_dists.append(max_dist)
+    
     # plot resulting element positions
     fig = plt.figure()
     ax1 = fig.add_subplot(projection='3d')
@@ -314,9 +341,6 @@ def optimize_angle_3d(shape, opt_parameters, roi_parameters, new_points, depth, 
     x = np.cos(u)*np.sin(v)
     y = np.sin(u)*np.sin(v)
     z = np.cos(v)
-
-    values = np.array(list(point_angle_dict.values()))
-    print("LENGTH OF VALUES", len(values))
 
     ## plot skeleton of helmet
     # ax1.scatter(x_s, y_s, z_s)
@@ -336,9 +360,9 @@ def optimize_angle_3d(shape, opt_parameters, roi_parameters, new_points, depth, 
     plt.show()
 
     # Plotting Histograms
-    fig1, (ax1, ax2, ax3) = plt.subplots(1, 3)
+    fig1, (ax1, ax2, ax3, ax4) = plt.subplots(1, 4)
 
-    ax1.hist(values[:, 4]*5)
+    ax1.hist(values[:, 4]*radius_of_roi)
     ax1.set_xlabel('Distance From Element to Focal Point (mm)')
     ax1.set_ylabel('Frequency')
     ax1.set_title('Distance Histogram')
@@ -352,4 +376,9 @@ def optimize_angle_3d(shape, opt_parameters, roi_parameters, new_points, depth, 
     ax3.set_xlabel('Angle of Element Relative To Helmet Surface (radians)')
     ax3.set_ylabel('Frequency')
     ax3.set_title('Angle Histogram (PHI)')
+
+    ax4.hist(max_dists)
+    ax4.set_xlabel('Distances')
+    ax4.set_ylabel('Frequency')
+    ax4.set_title('Max Distance Per Element Histogram')
     plt.show()

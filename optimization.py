@@ -4,7 +4,27 @@ from matplotlib import patches
 from utils import *
 from utils_3d import *
 
+'''
+Rebecca's Approach For Helmet Optimization
+- Ran two simuations for both deeper and shallow region. Creates a spherical helmet 
+  and measured that maximum sound on the element (for both shallow and deeper). Took the element that had the highest for shallow
+  and deep
 
+  time reversal sim (emitting from the focus to the transducer and seeing where the maximum sound amplitude)
+
+  software used for simulation
+  - Full wave 2 (Gianmarco's Simulation Tool)
+
+  varied the distance between element and focal point (may need to consider the shape of the elements)
+
+  plotting each voxel (plotting all of the voxels within a point vs just allowing matplotlib make a shape)
+
+  quantify the distance from the element 
+  - non-linear 
+    squeeze or stretch the distance and optimizing the distance to the skull
+
+    the hole is 1cm distance from element to distance, making 
+'''
 
 SIZE_COORD_ARRAY = 128
 POP_SIZE = 20
@@ -73,4 +93,5 @@ optimize_angle_3d(shape='ellipsoid',
                   roi_parameters=roi_parameters,
                   new_points=spaced_points,
                   depth=DEPTH / RADIUS_OF_ROI,
-                  helmet_parameters=helmet_parameters)
+                  helmet_parameters=helmet_parameters,
+                  radius_of_roi=RADIUS_OF_ROI)
