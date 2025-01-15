@@ -29,7 +29,7 @@ Rebecca's Approach For Helmet Optimization
 SIZE_COORD_ARRAY = 128
 POP_SIZE = 20
 
-ANGLE_DEGREES = 120
+ANGLE_DEGREES = 180
 ANGLE_RAD = (ANGLE_DEGREES * np.pi) / 180
 
 # in millimeters
@@ -39,7 +39,7 @@ ELLIPSE_B_DIM = 50
 ELLIPSE_C_DIM = 100
 RADIUS_OF_ROI = 5
 ELEMENT_SIZE = 5
-HOLE_RADIUS = 10
+HOLE_RADIUS = 20
 DEPTH = 75
 
 roi_parameters = {'r_min': 0,
@@ -47,9 +47,11 @@ roi_parameters = {'r_min': 0,
               'theta_min': 0,
               'theta_max': 2*np.pi,
               'phi_min': 0,
-              'phi_max': 2*np.pi}
+              'phi_max': 2*np.pi,
+              'num_fp': 128}
 
-helmet_parameters = {'radius': 1,
+helmet_parameters = {'shape': 'ellipsoid',
+                     'radius': 1,
                      'center': (0, 0, 0),
                      'a': (ELLIPSE_A_DIM / RADIUS_OF_ROI) + 1,
                      'b': (ELLIPSE_B_DIM / RADIUS_OF_ROI) + 1,
@@ -86,9 +88,15 @@ iterations = 100
 
 # ======================================= 3D ===========================================#
 
-spaced_points = lloyds_rel_3D(iterations, 'sphere', roi_parameters, False)
+helmet_element_cands_3d(num_elements=1500,
+                        helmet_parameters=helmet_parameters)
 
-optimize_angle_3d(shape='ellipsoid',
+spaced_points = lloyds_rel_3D(iterations=iterations, 
+                              shape='sphere', 
+                              parameters=roi_parameters, 
+                              plot=False)
+
+optimize_angle_3d_v2(shape='ellipsoid',
                   opt_parameters=opt_parameters,
                   roi_parameters=roi_parameters,
                   new_points=spaced_points,
