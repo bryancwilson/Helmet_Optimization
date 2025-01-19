@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from matplotlib import patches
 from utils import *
 from utils_3d import *
+import pandas as pd
 
 '''
 Rebecca's Approach For Helmet Optimization
@@ -29,17 +30,17 @@ Rebecca's Approach For Helmet Optimization
 SIZE_COORD_ARRAY = 128
 POP_SIZE = 20
 
-ANGLE_DEGREES = 180
+ANGLE_DEGREES = 140
 ANGLE_RAD = (ANGLE_DEGREES * np.pi) / 180
 
 # in millimeters
 # distance from region of interest to helmet
 ELLIPSE_A_DIM = 50
 ELLIPSE_B_DIM = 50
-ELLIPSE_C_DIM = 100
+ELLIPSE_C_DIM = 56
 RADIUS_OF_ROI = 5
 ELEMENT_SIZE = 5
-HOLE_RADIUS = 20
+HOLE_RADIUS = 10
 DEPTH = 75
 
 roi_parameters = {'r_min': 0,
@@ -50,7 +51,8 @@ roi_parameters = {'r_min': 0,
               'phi_max': 2*np.pi,
               'num_fp': 128}
 
-helmet_parameters = {'shape': 'ellipsoid',
+helmet_parameters = {'shape': 'semi_ellipsoid',
+                     'base_angle': ANGLE_RAD,
                      'radius': 1,
                      'center': (0, 0, 0),
                      'a': (ELLIPSE_A_DIM / RADIUS_OF_ROI) + 1,
@@ -88,18 +90,34 @@ iterations = 100
 
 # ======================================= 3D ===========================================#
 
-helmet_element_cands_3d(num_elements=1500,
+fib_points = helmet_element_cands_3d(iterations=500,
+                        num_elements = 128,
                         helmet_parameters=helmet_parameters)
 
-spaced_points = lloyds_rel_3D(iterations=iterations, 
-                              shape='sphere', 
-                              parameters=roi_parameters, 
-                              plot=False)
+output_params = {'base_angle': [ANGLE_DEGREES],
+                'hole_radius': [HOLE_RADIUS],
+                'element_size': [ELEMENT_SIZE],
+                'a': [ELLIPSE_A_DIM],
+                'b': [ELLIPSE_B_DIM],
+                'c': [ELLIPSE_C_DIM]}
+output_coords = {'x': list(fib_points[:, 0]),
+                 'y': list(fib_points[:, 1]),
+                 'z': list(fib_points[:, 2])}
 
-optimize_angle_3d_v2(shape='ellipsoid',
-                  opt_parameters=opt_parameters,
-                  roi_parameters=roi_parameters,
-                  new_points=spaced_points,
-                  depth=DEPTH / RADIUS_OF_ROI,
-                  helmet_parameters=helmet_parameters,
-                  radius_of_roi=RADIUS_OF_ROI)
+output_coords_df = pd.DataFrame.from_dict(output_coords)
+output_coords_df.to_csv('Helmet_Coords_SemiEllipsoid.csv')
+output_params_df = pd.DataFrame.from_dict(output_params)
+output_params_df.to_csv('Helmet_Params_SemiEllipsoid.csv')
+
+# spaced_points = lloyds_rel_3D(iterations=iterations, 
+#                               shape='sphere', 
+#                               parameters=roi_parameters, 
+#                               plot=False)
+
+# optimize_angle_3d_v2(shape='ellipsoid',
+#                   opt_parameters=opt_parameters,
+#                   roi_parameters=roi_parameters,
+#                   new_points=spaced_points,
+#                   depth=DEPTH / RADIUS_OF_ROI,
+#                   helmet_parameters=helmet_parameters,
+#                   radius_of_roi=RADIUS_OF_ROI)

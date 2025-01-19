@@ -33,24 +33,18 @@ def generate_random_polygon_3d(num_points, min_x, max_x, min_y, max_y):
         else:
             np.random.shuffle(points)
 
-def fibonacci_3d(samples, helmet_parameters):
+def fibonacci_3d(iterations, num_elements, helmet_parameters):
 
     points = []
-
     golden_ratio = (1 + 5**0.5)/2
-    i = 0
-    
-    while len(points) < samples:
+
+    # create a shape based on fibonacci
+    for i in range(iterations):
 
         theta = 2*np.pi*(i / golden_ratio)
-        phi = np.arccos(1 - 2*(i)/samples)
+        phi = np.arccos(1 - 2*(i)/iterations)
 
-        # ignore angles that overlap with helmet opening
-        if phi > -1*np.arctan2(helmet_parameters['hole_size'], helmet_parameters['c']) and phi < np.arctan2(helmet_parameters['hole_size'], helmet_parameters['c']):
-            i+=1
-            continue
-
-        if helmet_parameters['shape']=='ellipsoid':
+        if 'ellipsoid' in helmet_parameters['shape']:
 
             r = tp2rad_ellipsoid(theta,
                                 phi,
@@ -58,16 +52,65 @@ def fibonacci_3d(samples, helmet_parameters):
                                 helmet_parameters['b'],
                                 helmet_parameters['c'])
             
-        elif helmet_parameters['shape']=='sphere':
-            r = 1
+        elif helmet_parameters['shape'] == 'sphere':
+            r = helmet_parameters['radius']
 
         x, y, z = pol2cart_3d(r, theta, phi)
-
+    
         points.append((x, y, z))
 
-        i+=1
+    # remove points to further make shape
+    sifted_points = []
+    counter = 0
+    for p in points:
 
-    return points
+        _, _, phi = cart2pol_3d(p[0], p[1], p[2])
+
+        # ignore angles that overlap with helmet opening
+        if phi > -1*np.arctan2(helmet_parameters['hole_size'], helmet_parameters['c']) and phi < np.arctan2(helmet_parameters['hole_size'], helmet_parameters['c']):
+            continue
+
+        if 'semi' in helmet_parameters['shape']:
+            if phi > helmet_parameters['base_angle'] / 2 or phi < -1*helmet_parameters['base_angle'] / 2:
+                continue
+    
+        sifted_points.append(p)
+        counter += 1
+
+        if counter == num_elements:
+            break
+
+    # check to see if elements are too close
+    neigh = NearestNeighbors(n_neighbors=5)
+    neigh.fit(sifted_points)
+    neigh.kneighbors(sifted_points)
+
+    max_ = []
+    min_ = []
+
+    for p in sifted_points:
+        dists, nbrs = neigh.kneighbors(np.array([list(p)]))
+        max_.append(max(dists[0][1:]))
+        min_.append(min(dists[0][1:]))
+
+    # Plotting Histograms
+    # fig = plt.figure()
+    # ax1, ax2 = fig.subplots(1, 2)
+
+    # ax1.hist(np.multiply(max_, 5))
+    # ax1.set_xlabel('Max Distance Between Element Neighbors')
+    # ax1.set_ylabel('Frequency')
+    # ax1.set_title('Distance Histogram (mm)')
+
+    # ax2.hist(np.multiply(min_, 5))
+    # ax2.set_xlabel('Min Distance Between Element Neighbors')
+    # ax2.set_ylabel('Frequency')
+    # ax2.set_title('Distance Histogram (mm)')
+
+    # plt.show()
+
+    print("Number of Points", len(sifted_points))
+    return sifted_points
 
 # generate cartesian points
 def point_generation_3D(size, shape, parameters, plot=False):
@@ -576,18 +619,29 @@ def optimize_angle_3d_v2(shape, opt_parameters, roi_parameters, new_points, dept
     ax4.set_title('Nearest Element-to-Element Distance Histogram')
     plt.show()
 
-def helmet_element_cands_3d(num_elements, helmet_parameters):
+def helmet_element_cands_3d(iterations, num_elements, helmet_parameters):
 
     fig = plt.figure()
     ax1 = fig.add_subplot(projection='3d')
 
-    fib_points = fibonacci_3d(samples=num_elements,
+    fib_points = fibonacci_3d(iterations=iterations,
+                              num_elements=num_elements,
                              helmet_parameters=helmet_parameters)
     fib_points = np.array(fib_points)
+
+    # plot sphere
+    u, v = np.mgrid[0:2*np.pi:20j, 0:np.pi:10j]
+    x = np.cos(u)*np.sin(v)
+    y = np.sin(u)*np.sin(v)
+    z = np.cos(v)
 
     ax1.scatter(fib_points[:, 0], fib_points[:, 1], fib_points[:, 2])
     ax1.set_xlim(-20, 20)
     ax1.set_ylim(-20, 20)
     ax1.set_zlim(-20, 20)
+
+    ax1.plot_wireframe(x, y, z, color="k")
     
     plt.show()
+
+    return np.multiply(fib_points, 5)
