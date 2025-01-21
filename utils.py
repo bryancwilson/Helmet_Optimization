@@ -10,32 +10,6 @@ from scipy.spatial import Voronoi, voronoi_plot_2d
 from shapely.geometry import Polygon, Point
 from shapely.ops import nearest_points
 
-
-def pol2cart(r, theta):
-    x = r * np.cos(theta)
-    y = r * np.sin(theta)
-    return x, y
-
-def theta2rad_ellipse(theta, a, b):
-    r = (a*b) / math.sqrt(b**2 * math.cos(theta)**2 + a**2 * math.sin(theta)**2)
-    return r
-
-def cart2pol(x, y):
-    rho = np.sqrt(x**2 + y**2)
-    phi = np.arctan2(y, x)
-    return rho, phi
-
-def pol2cart_array(r_s, theta_s):
-    cart_x = []
-    cart_y = []
-
-    for r, t in zip(r_s, theta_s):
-        x, y = pol2cart(r, t)
-        cart_x.append(x)
-        cart_y.append(y)
-    
-    return cart_x, cart_y
-
 # generate random polygon
 def generate_random_polygon(num_points, min_x, max_x, min_y, max_y):
     """Generates a random polygon with the given number of points."""

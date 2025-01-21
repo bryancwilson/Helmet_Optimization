@@ -27,6 +27,10 @@ Rebecca's Approach For Helmet Optimization
     the hole is 1cm distance from element to distance, making 
 '''
 
+'''
+
+'''
+
 SIZE_COORD_ARRAY = 128
 POP_SIZE = 20
 
@@ -90,24 +94,27 @@ iterations = 100
 
 # ======================================= 3D ===========================================#
 
-fib_points = helmet_element_cands_3d(iterations=500,
-                        num_elements = 128,
-                        helmet_parameters=helmet_parameters)
+_ = tangent_ogive(L=56, 
+                  R=50)
 
-output_params = {'base_angle': [ANGLE_DEGREES],
-                'hole_radius': [HOLE_RADIUS],
-                'element_size': [ELEMENT_SIZE],
-                'a': [ELLIPSE_A_DIM],
-                'b': [ELLIPSE_B_DIM],
-                'c': [ELLIPSE_C_DIM]}
-output_coords = {'x': list(fib_points[:, 0]),
-                 'y': list(fib_points[:, 1]),
-                 'z': list(fib_points[:, 2])}
+# fib_points = helmet_element_cands_3d(iterations=500,
+#                         num_elements = 128,
+#                         helmet_parameters=helmet_parameters)
 
-output_coords_df = pd.DataFrame.from_dict(output_coords)
-output_coords_df.to_csv('Helmet_Coords_SemiEllipsoid.csv')
-output_params_df = pd.DataFrame.from_dict(output_params)
-output_params_df.to_csv('Helmet_Params_SemiEllipsoid.csv')
+# output_params = {'base_angle': [ANGLE_DEGREES],
+#                 'hole_radius': [HOLE_RADIUS],
+#                 'element_size': [ELEMENT_SIZE],
+#                 'a': [ELLIPSE_A_DIM],
+#                 'b': [ELLIPSE_B_DIM],
+#                 'c': [ELLIPSE_C_DIM]}
+# output_coords = {'x': list(fib_points[:, 0]),
+#                  'y': list(fib_points[:, 1]),
+#                  'z': list(fib_points[:, 2])}
+
+# output_coords_df = pd.DataFrame.from_dict(output_coords)
+# output_coords_df.to_csv('Helmet_Coords_SemiEllipsoid.csv')
+# output_params_df = pd.DataFrame.from_dict(output_params)
+# output_params_df.to_csv('Helmet_Params_SemiEllipsoid.csv')
 
 # spaced_points = lloyds_rel_3D(iterations=iterations, 
 #                               shape='sphere', 

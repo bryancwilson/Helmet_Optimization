@@ -33,6 +33,49 @@ def generate_random_polygon_3d(num_points, min_x, max_x, min_y, max_y):
         else:
             np.random.shuffle(points)
 
+def tangent_ogive(L, R, helmet_parameters):
+
+    # assertion
+    assert L > R, print("L must be greater than R")
+
+    # set the parameters for the shape
+    z = np.linspace(0, L, 50)
+    rho = (1 + L**2) / 2
+    y = (np.sqrt(rho**2 - (L - z)**2) + 1 - rho) * R
+
+    # plotting the 2 dimensional outline
+    plt.plot(y, (-1*z)+L)
+    plt.show()
+
+    # 3d Implementation
+
+    # generate unit circle
+    thetas = np.linspace(0, 2*np.pi, 50)
+
+    x_s = []
+    y_s = []
+    z_s = []
+    for i in range(len(z)):
+        x_, y_ = pol2cart_array([y[i]]*len(thetas), thetas+(i*.20))
+
+        x_s += x_
+        y_s += y_
+        z_s += [L - z[i]]*len(thetas)
+
+    x_s = np.reshape(np.array(x_s), (len(x_s), 1))
+    y_s = np.reshape(np.array(y_s), (len(y_s), 1))
+    z_s = np.reshape(np.array(z_s), (len(z_s), 1))
+
+    fig = plt.figure()
+    ax1 = fig.add_subplot(projection='3d')
+    ax1.scatter(x_s, y_s, z_s, color="b")
+    plt.show()
+
+
+    return x_s, y_s, z_s
+
+
+
 def fibonacci_3d(iterations, num_elements, helmet_parameters):
 
     points = []
