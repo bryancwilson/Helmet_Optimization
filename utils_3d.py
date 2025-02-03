@@ -902,30 +902,32 @@ def neighbor_distances(element_focal_points, spaced_focal_points):
 
     return spaced_focal_points[idxs][0]
 
-def dist_calculation(element_focal_points, neighbors):
+def dist_calculation(element_focal_points, surf_points):
 
-    # num_neigh = 8
-    # neigh = NearestNeighbors(n_neighbors=num_neigh)
-    # neigh.fit(surf_points + list(element_focal_points))
+    num_neigh = 5
+    neigh = NearestNeighbors(n_neighbors=num_neigh)
+    neigh.fit(surf_points + list(element_focal_points))
 
-    # # calculate the neighbors of the element focal points
-    # ns = neigh.kneighbors(element_focal_points)
-    # distances = np.reshape(ns[0][:, 1:], (1, 128*(num_neigh-1)))
+    # calculate the neighbors of the element focal points
+    ns = neigh.kneighbors(element_focal_points)
+    distances = np.reshape(ns[0][:, 1:], (1, 128*(num_neigh-1)))
 
     # fig = plt.figure()
     # ax = fig.subplots()
     # ax.hist(distances[0], bins=50)
     # plt.show()
 
-    # pdf_y_hat = distances[0] / sum(distances[0])
-    # pdf_y = np.array([1 / sum(distances[0])] * len(distances[0]))
+    pdf_y_hat = distances[0] / sum(distances[0])
+    pdf_y = np.array([1 / sum(distances[0])] * len(distances[0]))
 
-    # ce = entropy(pdf_y_hat, pdf_y)
+    ce = entropy(pdf_y_hat, pdf_y)
 
-    distances = element_focal_points - neighbors
-    mse = np.mean(distances**2)
+    return ce
 
-    return mse
+    # distances = element_focal_points - neighbors
+    # mse = np.mean(distances**2)
+
+    # return mse
 
 
 def crossover(top_cands, pop_size):

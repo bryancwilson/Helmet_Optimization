@@ -134,7 +134,7 @@ while len(top_cands_ele_pos) < population_size:
 
   l = random.randint(50, 80)
   r = random.randint(10, 45)
-  vs = random.random() * 3
+  vs = random.random() * 5
 
   # print("L: ", l/5, "R: ", r/5)
   helmet_params.append(tuple([l, r, vs]))
@@ -156,19 +156,19 @@ neighbors = ns
 
 # calculate metrics
 ce = dist_calculation(element_focal_points=element_focus_points,
-                    neighbors=neighbors)
+                    surf_points=surf_points)
 
 # optimization run
 stds = []
 means = []
-for _ in range(30):
+for _ in range(50):
 
   helmet_param_mse_s = {}
   for i in range(len(helmet_params)):
   # subject helmet parameters to fitness function
 
     helmet_param_mse_s[tuple(helmet_params[i])] = dist_calculation(top_cands_ele_foc_pos[i],
-                       neighbors)
+                       surf_points)
     
   sorted_ = sorted(helmet_param_mse_s.items(), key=lambda kv: kv[1])[:5]
 
@@ -186,17 +186,27 @@ for _ in range(30):
   stds.append(np.std(list(helmet_param_mse_s.values())))
 
 
+
+# plot converged geometry
+print("Param Converged To: ", helmet_params[0])
+helmet_points = helmet_element_cands_3d(L=helmet_params[0][0],
+                                  R=helmet_params[0][1],
+                                  plot=True)
+element_focus_points = calculate_normal_vectors(helmet_points=helmet_points,
+                                                vector_size= helmet_params[0][2],
+                                                plot=True)
+
 fig1, (ax1, ax2) = plt.subplots(1, 2)
 
 ax1.plot(np.linspace(0, len(means), len(means)), means)
 ax1.set_xlabel('Iterations')
 ax1.set_ylabel('Mean MSE')
-ax1.set_title('EVOL ALG MEAN MSE')
+ax1.set_title('EVOL ALG average cross entropy (mean)')
 
 ax2.plot(np.linspace(0, len(stds), len(stds)), stds)
 ax2.set_xlabel('Iterations')
 ax2.set_ylabel('STD DEV MSE')
-ax2.set_title('EVOL ALG STD MSE')
+ax2.set_title('EVOL ALG spread cross entropy (std dev)')
     
 plt.show()
 
