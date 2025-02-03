@@ -47,6 +47,10 @@ ELEMENT_SIZE = 5
 HOLE_RADIUS = 10
 DEPTH = 75
 
+# tangent ogive parameters
+# L=56
+# R=50
+
 roi_parameters = {'r_min': 0,
               'r_max': .9,
               'theta_min': 0,
@@ -94,12 +98,6 @@ iterations = 100
 
 # ======================================= 3D ===========================================#
 
-_ = tangent_ogive(L=56, 
-                  R=50)
-
-# fib_points = helmet_element_cands_3d(iterations=500,
-#                         num_elements = 128,
-#                         helmet_parameters=helmet_parameters)
 
 # output_params = {'base_angle': [ANGLE_DEGREES],
 #                 'hole_radius': [HOLE_RADIUS],
@@ -116,10 +114,91 @@ _ = tangent_ogive(L=56,
 # output_params_df = pd.DataFrame.from_dict(output_params)
 # output_params_df.to_csv('Helmet_Params_SemiEllipsoid.csv')
 
-# spaced_points = lloyds_rel_3D(iterations=iterations, 
-#                               shape='sphere', 
-#                               parameters=roi_parameters, 
-#                               plot=False)
+# plot surface
+surf_points = surface_points()
+
+# parameters
+population_size = 10
+# initialize element positions candidates
+helmet_params = []
+top_cands_ele_pos = []
+top_cands_ele_foc_pos = []
+neighbors = []
+
+# initialized set of evenly spaced points in the volume
+spaced_points = lloyds_rel_3D(iterations=iterations, 
+                              shape='sphere', 
+                              parameters=roi_parameters, 
+                              plot=False)
+while len(top_cands_ele_pos) < population_size:
+
+  l = random.randint(50, 80)
+  r = random.randint(10, 45)
+  vs = random.random() * 3
+
+  # print("L: ", l/5, "R: ", r/5)
+  helmet_params.append(tuple([l, r, vs]))
+  helmet_points = helmet_element_cands_3d(L=l,
+                                  R=r,
+                                  plot=False)
+  top_cands_ele_pos.append(helmet_points)
+
+  # element focus points
+  element_focus_points = calculate_normal_vectors(helmet_points=helmet_points,
+                                                  vector_size= vs,
+                                                  plot=False)
+  top_cands_ele_foc_pos.append(element_focus_points)
+
+  ns = neighbor_distances(element_focal_points=helmet_points,
+                     spaced_focal_points=spaced_points)
+  
+neighbors = ns
+
+# calculate metrics
+ce = dist_calculation(element_focal_points=element_focus_points,
+                    neighbors=neighbors)
+
+# optimization run
+stds = []
+means = []
+for _ in range(30):
+
+  helmet_param_mse_s = {}
+  for i in range(len(helmet_params)):
+  # subject helmet parameters to fitness function
+
+    helmet_param_mse_s[tuple(helmet_params[i])] = dist_calculation(top_cands_ele_foc_pos[i],
+                       neighbors)
+    
+  sorted_ = sorted(helmet_param_mse_s.items(), key=lambda kv: kv[1])[:5]
+
+  sifted_sorted = []
+  for pair in sorted_:
+    sifted_sorted.append(pair[0])
+
+  children_cands = crossover(sifted_sorted, 10)
+
+  helmet_params, top_cands_ele_pos, top_cands_ele_foc_pos = build_helmet(children_cands)
+
+  # save metrics
+
+  means.append(np.mean(list(helmet_param_mse_s.values())))
+  stds.append(np.std(list(helmet_param_mse_s.values())))
+
+
+fig1, (ax1, ax2) = plt.subplots(1, 2)
+
+ax1.plot(np.linspace(0, len(means), len(means)), means)
+ax1.set_xlabel('Iterations')
+ax1.set_ylabel('Mean MSE')
+ax1.set_title('EVOL ALG MEAN MSE')
+
+ax2.plot(np.linspace(0, len(stds), len(stds)), stds)
+ax2.set_xlabel('Iterations')
+ax2.set_ylabel('STD DEV MSE')
+ax2.set_title('EVOL ALG STD MSE')
+    
+plt.show()
 
 # optimize_angle_3d_v2(shape='ellipsoid',
 #                   opt_parameters=opt_parameters,
