@@ -132,21 +132,29 @@ spaced_points = lloyds_rel_3D(iterations=iterations,
                               plot=False)
 while len(top_cands_ele_pos) < population_size:
 
-  l = random.randint(50, 80)
-  r = random.randint(10, 45)
-  vs = random.random() * 5
+  feasible_params = False
+  while not feasible_params:
+    l = random.randint(10, 100)
+    r = random.randint(10, 100)
+    if l > r:
+      feasible_params = True
 
   # print("L: ", l/5, "R: ", r/5)
-  helmet_params.append(tuple([l, r, vs]))
   helmet_points = helmet_element_cands_3d(L=l,
                                   R=r,
                                   plot=False)
   top_cands_ele_pos.append(helmet_points)
 
+  # inside_sphere = False
+  # while not inside_sphere:
   # element focus points
+  vs = random.random() * 100
   element_focus_points = calculate_normal_vectors(helmet_points=helmet_points,
                                                   vector_size= vs,
                                                   plot=False)
+  inside_sphere = in_sphere(element_focal_points=element_focus_points)
+
+  helmet_params.append(tuple([l, r, vs]))
   top_cands_ele_foc_pos.append(element_focus_points)
 
   ns = neighbor_distances(element_focal_points=helmet_points,
@@ -156,19 +164,21 @@ neighbors = ns
 
 # calculate metrics
 ce = dist_calculation(element_focal_points=element_focus_points,
-                    surf_points=surf_points)
+                    surf_points=surf_points,
+                    neighbors=ns)
 
 # optimization run
 stds = []
 means = []
-for _ in range(50):
+for _ in range(10):
 
   helmet_param_mse_s = {}
   for i in range(len(helmet_params)):
   # subject helmet parameters to fitness function
 
     helmet_param_mse_s[tuple(helmet_params[i])] = dist_calculation(top_cands_ele_foc_pos[i],
-                       surf_points)
+                       surf_points,
+                       ns)
     
   sorted_ = sorted(helmet_param_mse_s.items(), key=lambda kv: kv[1])[:5]
 
@@ -191,10 +201,30 @@ for _ in range(50):
 print("Param Converged To: ", helmet_params[0])
 helmet_points = helmet_element_cands_3d(L=helmet_params[0][0],
                                   R=helmet_params[0][1],
-                                  plot=True)
+                                  plot=False)
 element_focus_points = calculate_normal_vectors(helmet_points=helmet_points,
                                                 vector_size= helmet_params[0][2],
-                                                plot=True)
+                                                plot=False)
+
+# plot element focus points scatter
+fig = plt.figure()
+ax1 = fig.add_subplot(projection='3d')
+ax1.scatter(element_focus_points[:, 0], element_focus_points[:, 1], element_focus_points[:, 2], color="b")
+ax1.scatter(helmet_points[:, 0], helmet_points[:, 1], helmet_points[:, 2], color="k")
+ax1.set_title("Element Focal Positions")
+
+u, v = np.mgrid[0:2*np.pi:20j, 0:np.pi:10j]
+x = np.cos(u)*np.sin(v)
+y = np.sin(u)*np.sin(v)
+z = np.cos(v)
+ax1.set_xlim(-10, 10)
+ax1.set_ylim(-10, 10)
+ax1.set_zlim(-10, 10)
+ax1.plot_wireframe(x, y, z, color="k")
+
+ax1.scatter(ns[:, 0], ns[:, 1], ns[:, 2], color='r')
+
+plt.figure()
 
 fig1, (ax1, ax2) = plt.subplots(1, 2)
 

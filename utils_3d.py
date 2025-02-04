@@ -902,7 +902,7 @@ def neighbor_distances(element_focal_points, spaced_focal_points):
 
     return spaced_focal_points[idxs][0]
 
-def dist_calculation(element_focal_points, surf_points):
+def dist_calculation(element_focal_points, surf_points, neighbors):
 
     num_neigh = 5
     neigh = NearestNeighbors(n_neighbors=num_neigh)
@@ -920,14 +920,28 @@ def dist_calculation(element_focal_points, surf_points):
     pdf_y_hat = distances[0] / sum(distances[0])
     pdf_y = np.array([1 / sum(distances[0])] * len(distances[0]))
 
-    ce = entropy(pdf_y_hat, pdf_y)
+    ce_surf_self = entropy(pdf_y_hat, pdf_y)
 
-    return ce
+    # calculate the distance to its neighbors
+    distances = element_focal_points - neighbors
+    mse = np.mean(distances**2)
 
-    # distances = element_focal_points - neighbors
-    # mse = np.mean(distances**2)
+    loss = 1*mse + 0*ce_surf_self
+
+    return loss
+
 
     # return mse
+
+def in_sphere(element_focal_points):
+
+    for ep in element_focal_points:
+        r, _, _ = cart2pol_3d(ep[0], ep[1], ep[2])
+        if r >= 1: # does the point liue in a 1 radius sphere
+            return False
+        
+
+    return True
 
 
 def crossover(top_cands, pop_size):
@@ -956,8 +970,9 @@ def crossover(top_cands, pop_size):
 
                 temp.append(id)
 
-            children.append(tuple(temp))
-            counter+=1
+            if temp[0] > temp[1]:       
+                children.append(tuple(temp))
+                counter+=1
 
             '''
             if np.random.binomial(size=1, n=1, p=weight)[0]:
