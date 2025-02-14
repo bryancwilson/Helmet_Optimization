@@ -44,8 +44,8 @@ ELLIPSE_B_DIM = 50
 ELLIPSE_C_DIM = 56
 RADIUS_OF_ROI = 5
 ELEMENT_SIZE = 5
-HOLE_RADIUS = 10
-DEPTH = 75
+HOLE_RADIUS = 100
+DEPTH = 60
 
 # tangent ogive parameters
 # L=56
@@ -98,7 +98,6 @@ iterations = 100
 
 # ======================================= 3D ===========================================#
 
-
 # output_params = {'base_angle': [ANGLE_DEGREES],
 #                 'hole_radius': [HOLE_RADIUS],
 #                 'element_size': [ELEMENT_SIZE],
@@ -114,8 +113,15 @@ iterations = 100
 # output_params_df = pd.DataFrame.from_dict(output_params)
 # output_params_df.to_csv('Helmet_Params_SemiEllipsoid.csv')
 
-# plot surface
+# plot francisco's helmet =====================================================================================
+helmet_points = francisco_bl()
+
+# plot surface of the region of interest
 surf_points = surface_points()
+
+element_focus_points = calculate_normal_vectors(helmet_points=helmet_points,
+                                                vector_sizes= 5,
+                                                plot=False)
 
 # parameters
 population_size = 10
@@ -139,33 +145,29 @@ while len(top_cands_ele_pos) < population_size:
     if l > r:
       feasible_params = True
 
-  # print("L: ", l/5, "R: ", r/5)
+  print("L: ", l, "R: ", r)
   helmet_points = helmet_element_cands_3d(L=l,
                                   R=r,
+                                  helmet_parameters=helmet_parameters,
                                   plot=False)
   top_cands_ele_pos.append(helmet_points)
 
   # inside_sphere = False
   # while not inside_sphere:
-  # element focus points
-  vs = random.random() * 100
+  # element focus points0
+  vs = np.random.uniform(low=.1, high=20, size=128)
   element_focus_points = calculate_normal_vectors(helmet_points=helmet_points,
-                                                  vector_size= vs,
+                                                  vector_sizes= vs,
                                                   plot=False)
   inside_sphere = in_sphere(element_focal_points=element_focus_points)
 
-  helmet_params.append(tuple([l, r, vs]))
+  helmet_params.append(tuple([l, r, tuple(vs)]))
   top_cands_ele_foc_pos.append(element_focus_points)
 
   ns = neighbor_distances(element_focal_points=helmet_points,
                      spaced_focal_points=spaced_points)
   
 neighbors = ns
-
-# calculate metrics
-ce = dist_calculation(element_focal_points=element_focus_points,
-                    surf_points=surf_points,
-                    neighbors=ns)
 
 # optimization run
 stds = []
@@ -176,9 +178,10 @@ for _ in range(10):
   for i in range(len(helmet_params)):
   # subject helmet parameters to fitness function
 
-    helmet_param_mse_s[tuple(helmet_params[i])] = dist_calculation(top_cands_ele_foc_pos[i],
-                       surf_points,
-                       ns)
+    helmet_param_mse_s[tuple(helmet_params[i])] = error_calculation(top_cands_ele_foc_pos[i],
+                                                                    helmet_points,
+                                                                    surf_points,
+                                                                    spaced_points)
     
   sorted_ = sorted(helmet_param_mse_s.items(), key=lambda kv: kv[1])[:5]
 
@@ -188,7 +191,7 @@ for _ in range(10):
 
   children_cands = crossover(sifted_sorted, 10)
 
-  helmet_params, top_cands_ele_pos, top_cands_ele_foc_pos = build_helmet(children_cands)
+  helmet_params, top_cands_ele_pos, top_cands_ele_foc_pos = build_helmet(children_cands, helmet_parameters)
 
   # save metrics
 
@@ -201,9 +204,10 @@ for _ in range(10):
 print("Param Converged To: ", helmet_params[0])
 helmet_points = helmet_element_cands_3d(L=helmet_params[0][0],
                                   R=helmet_params[0][1],
+                                  helmet_parameters=helmet_parameters,
                                   plot=False)
 element_focus_points = calculate_normal_vectors(helmet_points=helmet_points,
-                                                vector_size= helmet_params[0][2],
+                                                vector_sizes= helmet_params[0][2],
                                                 plot=False)
 
 # plot element focus points scatter
@@ -220,24 +224,35 @@ z = np.cos(v)
 ax1.set_xlim(-10, 10)
 ax1.set_ylim(-10, 10)
 ax1.set_zlim(-10, 10)
-ax1.plot_wireframe(x, y, z, color="k")
+ax1.plot_wireframe(x*2.5, y*2.5, z*2.5, color="k")
 
-ax1.scatter(ns[:, 0], ns[:, 1], ns[:, 2], color='r')
+ax1.scatter(spaced_points[:, 0], spaced_points[:, 1], spaced_points[:, 2], color='r')
 
 plt.figure()
 
-fig1, (ax1, ax2) = plt.subplots(1, 2)
+fig1, (ax1, ax2, ax3) = plt.subplots(1, 3)
 
 ax1.plot(np.linspace(0, len(means), len(means)), means)
 ax1.set_xlabel('Iterations')
 ax1.set_ylabel('Mean MSE')
-ax1.set_title('EVOL ALG average cross entropy (mean)')
+ax1.set_title('EVOL ALG Error (mean)')
 
 ax2.plot(np.linspace(0, len(stds), len(stds)), stds)
 ax2.set_xlabel('Iterations')
 ax2.set_ylabel('STD DEV MSE')
-ax2.set_title('EVOL ALG spread cross entropy (std dev)')
-    
+ax2.set_title('EVOL ALG Error (std dev)')
+
+# check for duplicate element positions in list
+neigh = NearestNeighbors(n_neighbors=3)
+helmet_points = np.array(helmet_points)
+neigh.fit(helmet_points)
+distances, _ = neigh.kneighbors(helmet_points)
+distances = np.reshape(distances[:, 1:], (128*(3 - 1)))
+ax3.hist(distances)
+ax3.set_xlabel('Distances (cm)')
+ax3.set_ylabel('Frequency')
+ax3.set_title('Nearest Element-to-Element Distance Histogram')
+
 plt.show()
 
 # optimize_angle_3d_v2(shape='ellipsoid',

@@ -25,12 +25,14 @@ def plot_3d_final(final_points):
 
     direct = np.array(direct)
 
-    ax2.scatter(cs2[:, 0], cs2[:, 1], cs2[:, 2])
+    ax2.scatter(cs2[:, 0]*2.5, cs2[:, 1]*2.5, cs2[:, 2]*2.5)
     # ax2.quiver(cs2[:, 0], cs2[:, 1], cs2[:, 2],
     #            direct[:, 0], direct[:, 1], direct[:, 2])
     
-    ax2.plot_wireframe(x, y, z, color="k")
-    
+    ax2.plot_wireframe(x*2.5, y*2.5, z*2.5, color="k")
+    ax2.set_xlabel('mm')
+    ax2.set_ylabel('mm')
+    ax2.set_zlabel('mm')
     plt.show()
 
 def plot_3d(initial_points, final_points, iterations, movements, shape, parameters):
@@ -54,10 +56,10 @@ def plot_3d(initial_points, final_points, iterations, movements, shape, paramete
         z = np.cos(v)
 
     cs1 = initial_points
-    ax1.scatter(cs1[:, 0], cs1[:, 1], cs1[:, 2])
-    ax1.plot_wireframe(x, y, z, color="b")
-    ax1.set_xlim(-1, 1)
-    ax1.set_ylim(-1, 1)
+    ax1.scatter(cs1[:, 0]*2.5, cs1[:, 1]*2.5, cs1[:, 2]*2.5)
+    ax1.plot_wireframe(x*2.5, y*2.5, z*2.5, color="k")
+    ax1.set_xlim(-3, 3)
+    ax1.set_ylim(-3, 3)
     ax1.set_title('Initial Point Positions')
     ax1.set_xlabel('X')
     ax1.set_ylabel('Y')
@@ -70,13 +72,13 @@ def plot_3d(initial_points, final_points, iterations, movements, shape, paramete
 
     direct = np.array(direct)
 
-    ax2.scatter(cs2[:, 0], cs2[:, 1], cs2[:, 2])
-    ax2.quiver(cs2[:, 0], cs2[:, 1], cs2[:, 2],
-               direct[:, 0], direct[:, 1], direct[:, 2])
+    ax2.scatter(cs2[:, 0]*2.5, cs2[:, 1]*2.5, cs2[:, 2]*2.5)
+    # ax2.quiver(cs2[:, 0], cs2[:, 1], cs2[:, 2],
+    #            direct[:, 0], direct[:, 1], direct[:, 2])
     
-    ax2.plot_wireframe(x, y, z, color="b")
-    ax2.set_xlim(-1, 1)
-    ax2.set_ylim(-1, 1)
+    ax2.plot_wireframe(x*2.5, y*2.5, z*2.5, color="k")
+    ax2.set_xlim(-3, 3)
+    ax2.set_ylim(-3, 3)
     ax2.set_title('Final Point Positions')
     ax2.set_xlabel('X')
     ax2.set_ylabel('Y')

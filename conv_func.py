@@ -14,8 +14,8 @@ def theta2rad_ellipse(theta, a, b):
 
 def cart2pol(x, y):
     rho = np.sqrt(x**2 + y**2)
-    phi = np.arctan2(y, x)
-    return rho, phi
+    theta = np.arctan2(y, x)
+    return rho, theta
 
 def pol2cart_array(r_s, theta_s):
     cart_x = []

@@ -16,6 +16,7 @@ from plotting_func import *
 from conv_func import *
 from scipy.special import kl_div
 from scipy.stats import entropy
+from sklearn.preprocessing import normalize
 
 # generate random polygon
 def generate_random_polygon_3d(num_points, min_x, max_x, min_y, max_y):
@@ -36,13 +37,39 @@ def generate_random_polygon_3d(num_points, min_x, max_x, min_y, max_y):
         else:
             np.random.shuffle(points)
 
-def tangent_ogive(L, R):
+def francisco_bl():
+
+    P = [728.39, 622.87, 526.50, 416.87, 315.13]
+
+    d0 = 20
+    points = []
+    phis = np.linspace(165/2*(math.pi/180), 50/2*(math.pi/180), len(P))
+    for p, ph in zip(P, phis):
+        radius_ = p/(2*math.pi)
+        radius = radius_/np.sin(ph)
+        print(radius_)
+        thetas = np.linspace(0, 2*math.pi, int(np.floor(p/d0)))
+        for t in thetas:
+            points.append(pol2cart_3d(radius, t, ph))
+
+    points = np.array(points)
+    fig = plt.figure()
+    ax1 = fig.add_subplot(projection='3d')
+    ax1.scatter(points[:, 0], points[:, 1], points[:, 2], color="b")
+    ax1.set_xlim(-100, 100)
+    ax1.set_ylim(-100, 100)
+    ax1.set_zlim(-100, 100)
+    plt.show()
+
+    return points
+
+def tangent_ogive(L, R, helmet_parameters):
 
     # assertion
     assert L > R, print("L must be greater than R")
 
     # set the parameters for the shape
-    z = np.linspace(0, L, 12)
+    z = np.linspace(0, L, 20)
     rho = (1 + L**2) / 2
     y = (np.sqrt(rho**2 - (L - z)**2) + 1 - rho) * R
 
@@ -53,7 +80,7 @@ def tangent_ogive(L, R):
     # 3d Implementation
 
     # generate unit circle
-    thetas = np.linspace(0, 2*np.pi, 12)
+    thetas = np.linspace(0, 2*np.pi, 20)
 
     x_s = []
     y_s = []
@@ -65,15 +92,28 @@ def tangent_ogive(L, R):
         y_s += y_
         z_s += [L - z[i]]*len(thetas)
 
+    idx_to_remove = []
+    for i, (x, y, z) in enumerate(zip(x_s, y_s, z_s)):
+        r, t, p = cart2pol_3d(x, y, z)
+        if p > -1*np.arctan2(helmet_parameters['hole_size'], 2*L) and p < np.arctan2(helmet_parameters['hole_size'], 2*L):
+            x_s[i] = 0
+            y_s[i] = 0
+            z_s[i] = 0
+            idx_to_remove.append(i)
+
+
     x_s = np.reshape(np.array(x_s), (len(x_s), 1))
     y_s = np.reshape(np.array(y_s), (len(y_s), 1))
     z_s = np.reshape(np.array(z_s), (len(z_s), 1))
 
     # fig = plt.figure()
     # ax1 = fig.add_subplot(projection='3d')
-    # ax1.scatter(x_s, y_s, z_s, color="b")
+    # # ax1.scatter(x_s, y_s, z_s, color="b")
+    # ax1.plot_wireframe(x_s, y_s, z_s, color="k")
+    # ax1.set_xlabel('cm')
+    # ax1.set_ylabel('cm')
+    # ax1.set_zlabel('cm')
     # plt.show()
-
 
     return x_s, y_s, z_s
 
@@ -349,7 +389,7 @@ def lloyds_rel_3D(iterations, shape, parameters, plot):
             shape=shape, 
             parameters=parameters)
         
-    return points
+    return points*2.5
     
 def optimize_angle_3d(shape, opt_parameters, roi_parameters, new_points, depth, helmet_parameters, radius_of_roi):
 
@@ -822,17 +862,23 @@ def optimize_angle_3d_v3(shape, opt_parameters, new_points, depth, helmet_parame
     ax4.set_title('Nearest Element-to-Element Distance Histogram')
     plt.show()
 
-def helmet_element_cands_3d(L,R, plot):
+def helmet_element_cands_3d(L,R,helmet_parameters,plot):
 
     points = tangent_ogive(L=L, 
-                            R=R)
+                            R=R,
+                            helmet_parameters=helmet_parameters)
     points = np.multiply(np.array(points), .2)
 
     # remove duplicate points
     unique_points = []
     for p in zip(points[0], points[1], points[2]):
+        if math.isnan(p[0][0]):
+            continue
+        if p[0][0] == 0 and p[1][0] == 0 and p[2][0] == 0:
+            continue
         if tuple([p[0][0], p[1][0], p[2][0]]) not in unique_points:
             unique_points.append(tuple([p[0][0], p[1][0], p[2][0]]))
+
 
     points = np.array(random.sample(unique_points, 128))
 
@@ -858,13 +904,13 @@ def helmet_element_cands_3d(L,R, plot):
 
     return points
 
-def calculate_normal_vectors(helmet_points, vector_size, plot):
-
-
+def calculate_normal_vectors(helmet_points, vector_sizes, plot):
 
     vectors = []
+    v = vector_sizes
+    # for hp, v in zip(helmet_points, vector_sizes):
     for hp in helmet_points:
-        scaling_factor = vector_size / np.sqrt((hp[0]**2) + (hp[1]**2) + (hp[2]**2))
+        scaling_factor = v / np.sqrt((hp[0]**2) + (hp[1]**2) + (hp[2]**2))
         vectors.append([hp[0]*scaling_factor, hp[1]*scaling_factor, hp[2]*scaling_factor])
                                    
     vectors = np.array(vectors)
@@ -902,31 +948,41 @@ def neighbor_distances(element_focal_points, spaced_focal_points):
 
     return spaced_focal_points[idxs][0]
 
-def dist_calculation(element_focal_points, surf_points, neighbors):
+def error_calculation(element_focal_points, helmet_points, surf_points, spaced_points):
 
-    num_neigh = 5
+    num_neigh = 2
     neigh = NearestNeighbors(n_neighbors=num_neigh)
-    neigh.fit(surf_points + list(element_focal_points))
+    neigh.fit(list(spaced_points))
 
     # calculate the neighbors of the element focal points
     ns = neigh.kneighbors(element_focal_points)
     distances = np.reshape(ns[0][:, 1:], (1, 128*(num_neigh-1)))
 
-    # fig = plt.figure()
-    # ax = fig.subplots()
-    # ax.hist(distances[0], bins=50)
-    # plt.show()
-
-    pdf_y_hat = distances[0] / sum(distances[0])
-    pdf_y = np.array([1 / sum(distances[0])] * len(distances[0]))
-
-    ce_surf_self = entropy(pdf_y_hat, pdf_y)
-
     # calculate the distance to its neighbors
-    distances = element_focal_points - neighbors
-    mse = np.mean(distances**2)
+    # distances = element_focal_points - neighbors
+    mse_ef = np.mean(distances**2)
+    std_ef = np.std(distances)
 
-    loss = 1*mse + 0*ce_surf_self
+    # calculate the neighbors of the elements
+    num_neigh = 3
+    neigh = NearestNeighbors(n_neighbors=num_neigh)
+    neigh.fit(helmet_points) 
+
+    # calculate the neighbors of the element focal points
+    ns = neigh.kneighbors(helmet_points)
+    distances = np.reshape(ns[0][:, 1:], (1, 128*(num_neigh-1))) 
+    mse_eh = np.mean(distances**2)
+
+    # pdf_y_hat = distances[0] / sum(distances[0])
+    # pdf_y = np.array([1 / sum(distances[0])] * len(distances[0]))
+    # ce_surf_self = entropy(pdf_y_hat, pdf_y)
+
+
+    # percentage inside sphere
+    out_of_sphere = in_sphere(element_focal_points=element_focal_points)
+
+    loss = 1*mse_ef + 1*out_of_sphere + 1*mse_eh + 1*(1 - std_ef)
+    print("MSE EF: ", mse_ef, "Percentage Out: ", out_of_sphere, "MSE EH: ", mse_eh)
 
     return loss
 
@@ -935,25 +991,33 @@ def dist_calculation(element_focal_points, surf_points, neighbors):
 
 def in_sphere(element_focal_points):
 
+    count = 0
     for ep in element_focal_points:
         r, _, _ = cart2pol_3d(ep[0], ep[1], ep[2])
         if r >= 1: # does the point liue in a 1 radius sphere
-            return False
+            count += 1
         
-
-    return True
+    return count / len(element_focal_points)
 
 
 def crossover(top_cands, pop_size):
     
     children = []
-    duos = combinations(top_cands, 2)
+    top_cands_rl = []
+    top_cands_v = []
+    for i in range(len(top_cands)):
+        top_cands_rl.append(tuple([top_cands[i][0], top_cands[i][1]]))
+        top_cands_v.append(top_cands[i][2])
 
-    for duo in duos:
+    duos = combinations(top_cands_rl, 2)
+    duos_v = combinations(top_cands_v, 2)
+
+    for duo, duo_v in zip(duos, duos_v):
         counter = 0
         while counter < int(np.ceil(pop_size / np.ceil(len(top_cands)))):
-            temp = []
-            for i in range(3):
+            # crossover for R and L Parameters
+            temp_rl = []
+            for i in range(len(duo[0])):
                 
                 # Check bounds of parameter
 
@@ -968,10 +1032,23 @@ def crossover(top_cands, pop_size):
                 else:
                     id = np.random.uniform(min(param),max(param),1)[0]
 
-                temp.append(id)
+                temp_rl.append(id)
+            # Crossover for V parameters
+            temp_v = []
+            for j in range(len(duo_v[0])):
+                idx0 = duo_v[0][i]
 
-            if temp[0] > temp[1]:       
-                children.append(tuple(temp))
+                idx1 = duo_v[1][i]
+                
+                param = (idx0, idx1)
+                
+                id = np.random.uniform(min(param),max(param),1)[0]
+
+                temp_v.append(id)
+
+            # Append Children to List
+            if temp_rl[0] > temp_rl[1]:       
+                children.append(tuple([temp_rl[0], temp_rl[1], top_cands[0][2]]))
                 counter+=1
 
             '''
@@ -991,10 +1068,9 @@ def crossover(top_cands, pop_size):
                     children.append(duo[0])
                     counter+=1
             '''
+    return children
 
-    return list(set(children))
-
-def build_helmet(top_cands):
+def build_helmet(top_cands, helmet_parameters):
 
     helmet_params = []
     top_cands_ele_pos = []
@@ -1003,15 +1079,16 @@ def build_helmet(top_cands):
     for (l, r, vs) in top_cands:
 
         # print("L: ", l/5, "R: ", r/5)
-        helmet_params.append(tuple([l, r, vs]))
+        helmet_params.append(tuple([l, r, tuple(vs)]))
         points = helmet_element_cands_3d(L=l,
                                         R=r,
+                                        helmet_parameters=helmet_parameters,
                                         plot=False)
         top_cands_ele_pos.append(points)
 
         # element focus points
         element_focus_points = calculate_normal_vectors(helmet_points=points,
-                                                        vector_size= vs,
+                                                        vector_sizes= vs,
                                                         plot=False)
         top_cands_ele_foc_pos.append(element_focus_points)
 
