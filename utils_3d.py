@@ -40,6 +40,8 @@ def generate_random_polygon_3d(num_points, min_x, max_x, min_y, max_y):
 def francisco_bl():
 
     P = [728.39, 622.87, 526.50, 416.87, 315.13]
+    plt.plot(normalize([P])[0])
+    plt.show()
 
     d0 = 20
     points = []
@@ -53,14 +55,19 @@ def francisco_bl():
         for t in thetas:
             points.append(pol2cart_3d(radius, t, ph))
 
-    # points = np.array(points)
-    # fig = plt.figure()
-    # ax1 = fig.add_subplot(projection='3d')
-    # ax1.scatter(points[:, 0], points[:, 1], points[:, 2], color="b")
-    # ax1.set_xlim(-100, 100)
-    # ax1.set_ylim(-100, 100)
-    # ax1.set_zlim(-100, 100)
-    # plt.show()
+    points = np.array(points)
+    fig = plt.figure()
+    ax1 = fig.add_subplot(projection='3d')
+    ax1.scatter(points[:, 0], points[:, 1], points[:, 2], color="b")
+    ax1.set_xlim(-100, 100)
+    ax1.set_ylim(-100, 100)
+    ax1.set_zlim(-100, 100)
+
+    ax1.set_xlabel('mm')
+    ax1.set_ylabel('mm')
+    ax1.set_zlabel('mm')
+
+    plt.show()
 
     return np.array(points)
 

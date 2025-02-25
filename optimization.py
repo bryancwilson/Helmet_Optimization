@@ -31,7 +31,15 @@ Rebecca's Approach For Helmet Optimization
 
 '''
 
+diameter = .01
+height = .10
+
+x, y, z = parameterize_cylinder(diameter=diameter,
+                                height=height)
+plot_cylinder(x, y, z)
+
 SIZE_COORD_ARRAY = 128
+
 POP_SIZE = 20
 
 ANGLE_DEGREES = 140
@@ -113,7 +121,7 @@ iterations = 100
 # output_params_df = pd.DataFrame.from_dict(output_params)
 # output_params_df.to_csv('Helmet_Params_SemiEllipsoid.csv')
 
-# plot francisco's helmet =====================================================================================
+# # plot francisco's helmet =====================================================================================
 helmet_points = francisco_bl()
 
 # plot surface of the region of interest
@@ -162,6 +170,7 @@ spaced_points = lloyds_rel_3D(iterations=iterations,
                               shape='sphere', 
                               parameters=roi_parameters, 
                               plot=False)
+
 while len(top_cands_ele_pos) < population_size:
 
   l = random.uniform(-13500, -13200)
