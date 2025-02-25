@@ -123,6 +123,32 @@ element_focus_points = calculate_normal_vectors(helmet_points=helmet_points,
                                                 vector_sizes= 5,
                                                 plot=False)
 
+# initialized set of evenly spaced points in the volume
+spaced_points = lloyds_rel_3D(iterations=iterations, 
+                              shape='sphere', 
+                              parameters=roi_parameters, 
+                              plot=False)
+
+# plot element focus points scatter
+fig = plt.figure()
+ax1 = fig.add_subplot(projection='3d')
+ax1.scatter(element_focus_points[:, 0], element_focus_points[:, 1], element_focus_points[:, 2], color="b")
+ax1.scatter(helmet_points[:, 0], helmet_points[:, 1], helmet_points[:, 2], color="k")
+ax1.set_title("Element Focal Positions")
+
+u, v = np.mgrid[0:2*np.pi:20j, 0:np.pi:10j]
+x = np.cos(u)*np.sin(v)
+y = np.sin(u)*np.sin(v)
+z = np.cos(v)
+ax1.set_xlim(-10, 10)
+ax1.set_ylim(-10, 10)
+ax1.set_zlim(-10, 10)
+ax1.plot_wireframe(x*2.5, y*2.5, z*2.5, color="k")
+
+ax1.scatter(spaced_points[:, 0], spaced_points[:, 1], spaced_points[:, 2], color='r')
+
+plt.show()
+
 # parameters
 population_size = 10
 # initialize element positions candidates
@@ -138,12 +164,9 @@ spaced_points = lloyds_rel_3D(iterations=iterations,
                               plot=False)
 while len(top_cands_ele_pos) < population_size:
 
-  feasible_params = False
-  while not feasible_params:
-    l = random.randint(10, 100)
-    r = random.randint(10, 100)
-    if l > r:
-      feasible_params = True
+  l = random.uniform(-13500, -13200)
+  r = random.uniform(-.01, -.005)
+
 
   print("L: ", l, "R: ", r)
   helmet_points = helmet_element_cands_3d(L=l,

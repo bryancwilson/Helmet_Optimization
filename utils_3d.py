@@ -49,19 +49,50 @@ def francisco_bl():
         radius = radius_/np.sin(ph)
         print(radius_)
         thetas = np.linspace(0, 2*math.pi, int(np.floor(p/d0)))
+        print(int(np.floor(p/d0)))
         for t in thetas:
             points.append(pol2cart_3d(radius, t, ph))
 
-    points = np.array(points)
-    fig = plt.figure()
-    ax1 = fig.add_subplot(projection='3d')
-    ax1.scatter(points[:, 0], points[:, 1], points[:, 2], color="b")
-    ax1.set_xlim(-100, 100)
-    ax1.set_ylim(-100, 100)
-    ax1.set_zlim(-100, 100)
-    plt.show()
+    # points = np.array(points)
+    # fig = plt.figure()
+    # ax1 = fig.add_subplot(projection='3d')
+    # ax1.scatter(points[:, 0], points[:, 1], points[:, 2], color="b")
+    # ax1.set_xlim(-100, 100)
+    # ax1.set_ylim(-100, 100)
+    # ax1.set_zlim(-100, 100)
+    # plt.show()
 
-    return points
+    return np.array(points)
+
+def tangent_ogive_2(a, c):
+
+    P = []
+    for i in range(4):
+        P.append(a*(math.e)**(c*i)+135977.0311)
+
+    d0 = 20
+    element_nums = [36, 31, 26, 20, 15]
+    points = []
+    phis = np.linspace(165/2*(math.pi/180), 50/2*(math.pi/180), len(P))
+    for p, ph, en in zip(P, phis, element_nums):
+        radius_ = p/(2*math.pi)
+        radius = radius_/np.sin(ph)
+        print(radius_)
+        thetas = np.linspace(0, 2*math.pi, en)
+        for t in thetas:
+            points.append(pol2cart_3d(radius, t, ph))
+
+    # points = np.array(points)
+    # fig = plt.figure()
+    # ax1 = fig.add_subplot(projection='3d')
+    # ax1.scatter(points[:, 0], points[:, 1], points[:, 2], color="b")
+    # ax1.set_xlim(-100, 100)
+    # ax1.set_ylim(-100, 100)
+    # ax1.set_zlim(-100, 100)
+    # plt.show()
+
+    return np.array(points)
+
 
 def tangent_ogive(L, R, helmet_parameters):
 
@@ -69,7 +100,7 @@ def tangent_ogive(L, R, helmet_parameters):
     assert L > R, print("L must be greater than R")
 
     # set the parameters for the shape
-    z = np.linspace(0, L, 20)
+    z = np.linspace(0, L, 40)
     rho = (1 + L**2) / 2
     y = (np.sqrt(rho**2 - (L - z)**2) + 1 - rho) * R
 
@@ -80,12 +111,13 @@ def tangent_ogive(L, R, helmet_parameters):
     # 3d Implementation
 
     # generate unit circle
-    thetas = np.linspace(0, 2*np.pi, 20)
+    thetas = np.linspace(0, 2*np.pi, 40)
 
     x_s = []
     y_s = []
     z_s = []
-    for i in range(len(z)):
+    # print(z)
+    for i in range(14, len(z)):
         x_, y_ = pol2cart_array([y[i]]*len(thetas), thetas+(i*.20))
 
         x_s += x_
@@ -96,6 +128,11 @@ def tangent_ogive(L, R, helmet_parameters):
     for i, (x, y, z) in enumerate(zip(x_s, y_s, z_s)):
         r, t, p = cart2pol_3d(x, y, z)
         if p > -1*np.arctan2(helmet_parameters['hole_size'], 2*L) and p < np.arctan2(helmet_parameters['hole_size'], 2*L):
+            x_s[i] = 0
+            y_s[i] = 0
+            z_s[i] = 0
+            idx_to_remove.append(i)
+        if p < -1*1.047 and p > 1.047:
             x_s[i] = 0
             y_s[i] = 0
             z_s[i] = 0
@@ -864,8 +901,8 @@ def optimize_angle_3d_v3(shape, opt_parameters, new_points, depth, helmet_parame
 
 def helmet_element_cands_3d(L,R,helmet_parameters,plot):
 
-    points = tangent_ogive(L=L, 
-                            R=R,
+    points = tangent_ogive_2(a=L, 
+                            c=R,
                             helmet_parameters=helmet_parameters)
     points = np.multiply(np.array(points), .2)
 
@@ -907,7 +944,7 @@ def helmet_element_cands_3d(L,R,helmet_parameters,plot):
 def calculate_normal_vectors(helmet_points, vector_sizes, plot):
 
     vectors = []
-    v = vector_sizes
+    v = 105
     # for hp, v in zip(helmet_points, vector_sizes):
     for hp in helmet_points:
         scaling_factor = v / np.sqrt((hp[0]**2) + (hp[1]**2) + (hp[2]**2))
@@ -1027,10 +1064,7 @@ def crossover(top_cands, pop_size):
                 
                 param = (idx0, idx1)
                 
-                if i < 2:
-                    id = int(np.round(np.random.uniform(min(param),max(param),1)[0]))
-                else:
-                    id = np.random.uniform(min(param),max(param),1)[0]
+                id = np.random.uniform(min(param),max(param),1)[0]
 
                 temp_rl.append(id)
             # Crossover for V parameters
@@ -1047,9 +1081,8 @@ def crossover(top_cands, pop_size):
                 temp_v.append(id)
 
             # Append Children to List
-            if temp_rl[0] > temp_rl[1]:       
-                children.append(tuple([temp_rl[0], temp_rl[1], top_cands[0][2]]))
-                counter+=1
+            children.append(tuple([temp_rl[0], temp_rl[1], top_cands[0][2]]))
+            counter+=1
 
             '''
             if np.random.binomial(size=1, n=1, p=weight)[0]:
