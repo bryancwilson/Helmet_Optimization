@@ -40,8 +40,8 @@ def generate_random_polygon_3d(num_points, min_x, max_x, min_y, max_y):
 def francisco_bl():
 
     P = [728.39, 622.87, 526.50, 416.87, 315.13]
-    plt.plot(normalize([P])[0])
-    plt.show()
+    # plt.plot(normalize([P])[0])
+    # plt.show()
 
     d0 = 20
     points = []
@@ -55,19 +55,19 @@ def francisco_bl():
         for t in thetas:
             points.append(pol2cart_3d(radius, t, ph))
 
-    points = np.array(points)
-    fig = plt.figure()
-    ax1 = fig.add_subplot(projection='3d')
-    ax1.scatter(points[:, 0], points[:, 1], points[:, 2], color="b")
-    ax1.set_xlim(-100, 100)
-    ax1.set_ylim(-100, 100)
-    ax1.set_zlim(-100, 100)
+    # points = np.array(points)
+    # fig = plt.figure()
+    # ax1 = fig.add_subplot(projection='3d')
+    # ax1.scatter(points[:, 0], points[:, 1], points[:, 2], color="b")
+    # ax1.set_xlim(-100, 100)
+    # ax1.set_ylim(-100, 100)
+    # ax1.set_zlim(-100, 100)
 
-    ax1.set_xlabel('mm')
-    ax1.set_ylabel('mm')
-    ax1.set_zlabel('mm')
+    # ax1.set_xlabel('mm')
+    # ax1.set_ylabel('mm')
+    # ax1.set_zlabel('mm')
 
-    plt.show()
+    # plt.show()
 
     return np.array(points)
 
@@ -948,13 +948,13 @@ def helmet_element_cands_3d(L,R,helmet_parameters,plot):
 
     return points
 
-def calculate_normal_vectors(helmet_points, vector_sizes, plot):
+def calculate_normal_vectors(helmet_points, flags, vector_sizes, plot):
 
     vectors = []
-    v = 105
+    v = [115, 105, 105, 105, 117]
     # for hp, v in zip(helmet_points, vector_sizes):
-    for hp in helmet_points:
-        scaling_factor = v / np.sqrt((hp[0]**2) + (hp[1]**2) + (hp[2]**2))
+    for hp, f in zip(helmet_points, flags):
+        scaling_factor = v[f - 1] / np.sqrt((hp[0]**2) + (hp[1]**2) + (hp[2]**2))
         vectors.append([hp[0]*scaling_factor, hp[1]*scaling_factor, hp[2]*scaling_factor])
                                    
     vectors = np.array(vectors)

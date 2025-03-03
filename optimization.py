@@ -31,13 +31,6 @@ Rebecca's Approach For Helmet Optimization
 
 '''
 
-diameter = .01
-height = .10
-
-x, y, z = parameterize_cylinder(diameter=diameter,
-                                height=height)
-plot_cylinder(x, y, z)
-
 SIZE_COORD_ARRAY = 128
 
 POP_SIZE = 20
@@ -127,9 +120,37 @@ helmet_points = francisco_bl()
 # plot surface of the region of interest
 surf_points = surface_points()
 
+# flag the rows of elements
+flags = [0] * len(helmet_points)
+for i in range(len(helmet_points)):
+  if i >= 113 and i < 128:
+    flags[i] = 5
+  elif i >= 93 and i < 113:
+    flags[i] = 4
+  elif i >= 67 and i < 93:
+    flags[i] = 3
+  elif i >= 36 and i < 67:
+    flags[i] = 2
+  elif i < 36:
+    flags[i] = 1
+
 element_focus_points = calculate_normal_vectors(helmet_points=helmet_points,
+                                                flags=flags,
                                                 vector_sizes= 5,
                                                 plot=False)
+
+pd.DataFrame(element_focus_points).to_csv('Element_Focal_Coordinates.csv')
+# data = []
+# for efp in element_focus_points:
+#   diameter = 1
+#   height = 7
+
+#   x, y, z = parameterize_cylinder(vector=efp,
+#                                   diameter=diameter,
+#                                   height=height)
+#   data.append(go.Surface(x=x, y=y, z=z, showscale=False))
+
+# plot_cylinder(data)
 
 # initialized set of evenly spaced points in the volume
 spaced_points = lloyds_rel_3D(iterations=iterations, 

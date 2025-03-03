@@ -63,16 +63,16 @@ def generate_rotated_points_along_vector(vector, start_point, step_size, num_ste
 # ====================================== 3D Plotting Functions ======================================
 from conv_func import cart2pol_3d, pol2cart_3d
 
-def parameterize_cylinder(diameter, height):
+def parameterize_cylinder(vector, diameter, height):
 
-    vector = [1, 1, 1]  # Rotation axis
-    start_point = [0, 0, 0]  # Where the vector starts
+    vector = vector  # Rotation axis
+    start_point = vector / 2  # Where the vector starts
     step_size = height  # Distance between each base point along the vector
     num_steps = 2  # Number of points along the vector
     radius = diameter/2  # Rotation radius
 
     x, y, z = generate_rotated_points_along_vector(vector, start_point, step_size, num_steps, radius)
-    return x, y, z
+
     # # # Create the figure and axes object
     # fig = plt.figure()
     # ax = fig.add_subplot(111, projection='3d')
@@ -82,17 +82,19 @@ def parameterize_cylinder(diameter, height):
 
     # # Plot the arrows
     # for i in range(len(start_points)):
-    #     x, y, z = start_points[i]
+    #     x_, y_, z_ = start_points[i]
     #     dx, dy, dz = end_points[i] - start_points[i]
-    #     ax.quiver(x, y, z, dx, dy, dz, color=['r', 'g'][i], arrow_length_ratio=0.1)
+    #     ax.quiver(x_, y_, z_, dx, dy, dz, color=['r', 'g'][i], arrow_length_ratio=0.1)
     # # Add a legend
     # ax.legend()
 
-    # ax.scatter(rotated_points[:, 0],
-    #            rotated_points[:, 1],
-    #            rotated_points[:, 2])
+    # ax.scatter(x.flatten(),
+    #            y.flatten(),
+    #            z.flatten())
     # # Show the plot
     # plt.show()
+
+    return x, y, z
 
     
     # Generate points for the cylinder
@@ -110,10 +112,10 @@ def parameterize_cylinder(diameter, height):
     # x_grid, y_grid, z_grid = np.meshgrid(rotated_points[:, 0], rotated_points[:, 1], rotated_points[:, 2])
     return x_grid, y_grid, z_grid
 
-def plot_cylinder(x_grid, y_grid, z_grid):
+def plot_cylinder(data):
 
     # Sphere parameters
-    radius = 1
+    radius = .0025
     center_x, center_y, center_z = 0, 0, 0
 
     # Create the meshgrid for the sphere
@@ -123,13 +125,14 @@ def plot_cylinder(x_grid, y_grid, z_grid):
     y = radius * np.outer(np.sin(u), np.sin(v)) + center_y
     z = radius * np.outer(np.ones(np.size(u)), np.cos(v)) + center_z
 
+    # data.append(go.Surface(x=x,                                            
+    #                        y=y, 
+    #                        z=z, 
+    #                        colorscale=[[0, '#ADD8E6'], [1, '#ADD8E6']], # Light blue color
+    #                        opacity=0.5,
+    #                        showscale=False))
     # Plot the cylinder
-    fig = go.Figure(data=[go.Surface(x=x_grid, y=y_grid, z=z_grid), go.Surface(x=x, 
-                                                                               y=y, 
-                                                                               z=z, 
-                                                                               colorscale=[[0, '#ADD8E6'], [1, '#ADD8E6']], # Light blue color
-                                                                               opacity=0.2,
-                                                                               showscale=False)])
+    fig = go.Figure(data=data)
 
     # Update layout for better visualization (optional)
     # fig.update_layout(
