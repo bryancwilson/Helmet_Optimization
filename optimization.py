@@ -139,7 +139,7 @@ element_focus_points = calculate_normal_vectors(helmet_points=helmet_points,
                                                 vector_sizes= 5,
                                                 plot=False)
 
-pd.DataFrame(element_focus_points).to_csv('Element_Focal_Coordinates.csv')
+# pd.DataFrame(element_focus_points).to_csv('Element_Focal_Coordinates.csv')
 # data = []
 # for efp in element_focus_points:
 #   diameter = 1
